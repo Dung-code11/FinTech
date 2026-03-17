@@ -138,9 +138,7 @@ public class AuthService {
                 .findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Account account = accountRepository
-                .findById(infoUser.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+        Account account = infoUser.getAccount();
 
         account.setPassword(passwordEncoder.encode(newPassword));
 
