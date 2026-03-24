@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useWallet } from '../context/WalletContext';
+import { useTransaction } from '../context/TransactionContext';
 import Sidebar from '../components/dashboard/Sidebar';
 import Header from '../components/layout/Header';
 import BottomNav from '../components/layout/BottomNav';
-import { DailyExpenseCard, WalletCard } from '../components/dashboard/StatCard';
+import { WalletGrid, DailyExpenseCard } from '../components/dashboard/StatCard';
 import NetChangeCard from '../components/dashboard/NetChangeCard';
 import TransactionList from '../components/dashboard/TransactionList';
 import WalletDialog from '../pages/WalletDialog';
@@ -13,35 +15,70 @@ const HomePage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
   const [showWalletDialog, setShowWalletDialog] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState('all'); // State để lưu ví được chọn
   const { user } = useAuth();
+  const { wallets, loadWallets } = useWallet();
+  const { transactions, loadTransactions } = useTransaction();
+
+  useEffect(() => {
+    loadWallets();
+    loadTransactions();
+  }, []);
+
+  // Debug: Xem dữ liệu wallets và transactions
+  useEffect(() => {
+    console.log('HomePage - Wallets:', wallets);
+    console.log('HomePage - Transactions:', transactions);
+  }, [wallets, transactions]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  const handleCreateWallet = (walletData) => {
-    console.log('New wallet created:', walletData);
-    // Xử lý tạo ví ở đây (gọi API, update state, etc.)
+  const handleCreateWallet = async (walletData) => {
+    console.log('Creating wallet:', walletData);
+    setShowWalletDialog(false);
+    await loadWallets();
+  };
+
+  const handleSelectWallet = (wallet) => {
+    console.log('Selected wallet:', wallet);
+    setSelectedWallet(wallet.id); // Cập nhật state khi chọn ví
+  };
+
+  const handleViewDetails = () => {
+    console.log('View details for wallet:', selectedWallet);
+    // TODO: Navigate to detailed analytics page
   };
 
   return (
     <div className={styles.dashboard}>
       <main className={styles.mainContent}>
-        <Header onMenuClick={toggleSidebar} />
-        
-        {/* Stats Grid */}
-        <div className={styles.statsGrid}>
-          <DailyExpenseCard />
-          <WalletCard onClick={() => setShowWalletDialog(true)} />
-        </div>
+        <Header onMenuClick={toggleSidebar} />        
+        {/* Wallet Grid */}
+        <WalletGrid 
+          wallets={wallets}
+          transactions={transactions}
+          onAddWallet={() => setShowWalletDialog(true)}
+          onSelectWallet={handleSelectWallet}
+        />
 
         {/* Net Change Section */}
         <div className={styles.netChangeSection}>
-          <NetChangeCard />
+          <NetChangeCard 
+            transactions={transactions}
+            wallets={wallets}
+            selectedWalletId={selectedWallet}
+            onViewDetails={handleViewDetails}
+          />
         </div>
 
-        {/* Transactions */}
-        <TransactionList />
+        {/* Transactions - TRUYỀN selectedWallet vào đây */}
+        <TransactionList 
+          transactions={transactions}
+          wallets={wallets}
+          selectedWalletId={selectedWallet}
+        />
 
         {/* Bottom Navigation (Mobile) */}
         <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />

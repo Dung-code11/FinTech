@@ -2,6 +2,7 @@ package com.fintrack.backend.controller;
 
 import com.fintrack.backend.dto.Response.WalletResponse;
 import com.fintrack.backend.dto.WalletRequest;
+import com.fintrack.backend.model.Account;
 import com.fintrack.backend.model.Wallet;
 import com.fintrack.backend.service.WalletService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,10 @@ public class WalletController {
 
     @GetMapping
     public List<WalletResponse> getWallets(Authentication authentication){
-        String accountId = authentication.getName();
+
+        Account account = (Account) authentication.getPrincipal();
+        String accountId = account.getId();
+
         return walletService.getWallets(accountId);
     }
 
@@ -28,7 +32,8 @@ public class WalletController {
             @PathVariable String walletId,
             Authentication authentication
     ){
-        String accountId = authentication.getName();
+        Account account = (Account) authentication.getPrincipal();
+        String accountId = account.getId();
         return walletService.getWalletById(walletId, accountId);
     }
 
@@ -37,7 +42,8 @@ public class WalletController {
             Authentication authentication,
             @RequestBody WalletRequest request
     ){
-        String accountId = authentication.getName();
+        Account account = (Account) authentication.getPrincipal();
+        String accountId = account.getId();
         walletService.createWallet(accountId, request);
         return "Create wallet success";
     }
@@ -48,7 +54,8 @@ public class WalletController {
             Authentication authentication,
             @RequestBody WalletRequest request
     ){
-        String accountId = authentication.getName();
+        Account account = (Account) authentication.getPrincipal();
+        String accountId = account.getId();
         walletService.updateWallet(walletId, accountId, request);
         return "Update wallet success";
     }
@@ -58,7 +65,8 @@ public class WalletController {
             @PathVariable String walletId,
             Authentication authentication
     ){
-        String accountId = authentication.getName();
+        Account account = (Account) authentication.getPrincipal();
+        String accountId = account.getId();
         walletService.deleteWallet(walletId, accountId);
         return "Delete wallet success";
     }

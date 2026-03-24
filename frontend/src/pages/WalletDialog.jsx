@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
+import { useWallet } from '../context/WalletContext';
 import styles from '../css/WalletDialog.module.css';
 import { 
   X, 
   Wallet, 
   CreditCard, 
-  DollarSign, 
   Users, 
   Calendar,
   AlertCircle,
@@ -18,7 +18,7 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
   const [walletType, setWalletType] = useState('cash');
   const [formData, setFormData] = useState({
     name: '',
-    currency: 'USD',
+    currency: 'VND',
     creditLimit: '',
     unpaidBalance: '',
     dueDate: '',
@@ -26,10 +26,13 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
     inviteOthers: false
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const { createWallet } = useWallet();
 
   const currencies = [
-    { code: 'USD', symbol: '$', name: 'USD - Đô la Mỹ' },
     { code: 'VND', symbol: '₫', name: 'VND - Việt Nam Đồng' },
+    { code: 'USD', symbol: '$', name: 'USD - Đô la Mỹ' },
     { code: 'EUR', symbol: '€', name: 'EUR - Euro' },
     { code: 'GBP', symbol: '£', name: 'GBP - Bảng Anh' },
     { code: 'JPY', symbol: '¥', name: 'JPY - Yên Nhật' },
@@ -62,6 +65,8 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
     } else {
       if (!formData.initialBalance) {
         newErrors.initialBalance = 'Vui lòng nhập số dư ban đầu';
+      } else if (parseFloat(formData.initialBalance) < 0) {
+        newErrors.initialBalance = 'Số dư không được âm';
       }
     }
 
@@ -69,18 +74,44 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (step === 1) {
       if (validateForm()) {
         setStep(2);
       }
     } else {
-      onSave({
+      setLoading(true);
+      
+      // Chuẩn bị dữ liệu để gửi lên API
+      const walletData = {
         ...formData,
         type: walletType,
-        createdAt: new Date().toISOString()
-      });
-      onClose();
+        // Chuyển đổi số tiền từ string sang number
+        initialBalance: formData.initialBalance ? parseFloat(formData.initialBalance) : 0,
+        creditLimit: formData.creditLimit ? parseFloat(formData.creditLimit) : 0,
+        unpaidBalance: formData.unpaidBalance ? parseFloat(formData.unpaidBalance) : 0
+      };
+
+      const result = await createWallet(walletData);
+      setLoading(false);
+
+      if (result.success) {
+        if (onSave) onSave(result.data);
+        onClose();
+        // Reset form
+        setFormData({
+          name: '',
+          currency: 'VND',
+          creditLimit: '',
+          unpaidBalance: '',
+          dueDate: '',
+          initialBalance: '',
+          inviteOthers: false
+        });
+        setStep(1);
+      } else {
+        setErrors({ submit: result.error });
+      }
     }
   };
 
@@ -92,7 +123,7 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
     }
     setFormData({
       name: '',
-      currency: 'USD',
+      currency: 'VND',
       creditLimit: '',
       unpaidBalance: '',
       dueDate: '',
@@ -107,7 +138,7 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
   return (
     <div className={styles.overlay} onClick={handleClose}>
       <div className={styles.dialog} onClick={e => e.stopPropagation()}>
-        {/* Header - Fixed */}
+        {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <div className={styles.iconWrapper}>
@@ -123,7 +154,7 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
           </button>
         </div>
 
-        {/* Progress Steps - Fixed */}
+        {/* Progress Steps */}
         <div className={styles.progressSteps}>
           <div className={`${styles.step} ${step >= 1 ? styles.active : ''} ${step > 1 ? styles.completed : ''}`}>
             <span className={styles.stepNumber}>{step > 1 ? <Check size={14} /> : '1'}</span>
@@ -136,8 +167,15 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
           </div>
         </div>
 
-        {/* Scrollable Content - Custom Scrollbar */}
+        {/* Scrollable Content */}
         <div className={styles.scrollableContent}>
+          {errors.submit && (
+            <div className={styles.errorMessage}>
+              <AlertCircle size={16} />
+              {errors.submit}
+            </div>
+          )}
+
           {/* Step 1: Basic Info */}
           {step === 1 && (
             <>
@@ -245,7 +283,9 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
                       <span className={styles.required}>*</span>
                     </label>
                     <div className={styles.inputWrapper}>
-                      <span className={styles.inputPrefix}>$</span>
+                      <span className={styles.inputPrefix}>
+                        {currencies.find(c => c.code === formData.currency)?.symbol || '$'}
+                      </span>
                       <input
                         type="number"
                         id="creditLimit"
@@ -269,7 +309,9 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
                       Số dư chưa thanh toán
                     </label>
                     <div className={styles.inputWrapper}>
-                      <span className={styles.inputPrefix}>$</span>
+                      <span className={styles.inputPrefix}>
+                        {currencies.find(c => c.code === formData.currency)?.symbol || '$'}
+                      </span>
                       <input
                         type="number"
                         id="unpaidBalance"
@@ -306,7 +348,9 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
                     <span className={styles.required}>*</span>
                   </label>
                   <div className={styles.inputWrapper}>
-                    <span className={styles.inputPrefix}>$</span>
+                    <span className={styles.inputPrefix}>
+                      {currencies.find(c => c.code === formData.currency)?.symbol || '$'}
+                    </span>
                     <input
                       type="number"
                       id="initialBalance"
@@ -371,17 +415,26 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
                     <>
                       <div className={styles.summaryItem}>
                         <span className={styles.summaryLabel}>Hạn mức</span>
-                        <span className={styles.summaryValue}>${formData.creditLimit || '0'}</span>
+                        <span className={styles.summaryValue}>
+                          {currencies.find(c => c.code === formData.currency)?.symbol}
+                          {parseFloat(formData.creditLimit || 0).toLocaleString()}
+                        </span>
                       </div>
                       <div className={styles.summaryItem}>
                         <span className={styles.summaryLabel}>Dư nợ</span>
-                        <span className={styles.summaryValue}>${formData.unpaidBalance || '0'}</span>
+                        <span className={styles.summaryValue}>
+                          {currencies.find(c => c.code === formData.currency)?.symbol}
+                          {parseFloat(formData.unpaidBalance || 0).toLocaleString()}
+                        </span>
                       </div>
                     </>
                   ) : (
                     <div className={styles.summaryItem}>
                       <span className={styles.summaryLabel}>Số dư</span>
-                      <span className={styles.summaryValue}>${formData.initialBalance || '0'}</span>
+                      <span className={styles.summaryValue}>
+                        {currencies.find(c => c.code === formData.currency)?.symbol}
+                        {parseFloat(formData.initialBalance || 0).toLocaleString()}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -427,13 +480,17 @@ const WalletDialog = ({ isOpen, onClose, onSave }) => {
           )}
         </div>
 
-        {/* Footer - Fixed */}
+        {/* Footer */}
         <div className={styles.footer}>
-          <button className={styles.cancelBtn} onClick={handleClose}>
+          <button className={styles.cancelBtn} onClick={handleClose} disabled={loading}>
             {step === 2 ? 'Quay lại' : 'Hủy'}
           </button>
-          <button className={styles.continueBtn} onClick={handleSubmit}>
-            {step === 1 ? 'Tiếp tục' : 'Hoàn tất'}
+          <button 
+            className={styles.continueBtn} 
+            onClick={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? 'Đang xử lý...' : (step === 1 ? 'Tiếp tục' : 'Hoàn tất')}
           </button>
         </div>
       </div>
