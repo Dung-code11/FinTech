@@ -36,4 +36,10 @@ public class Category {
     @OneToMany(mappedBy = "category")
     @JsonIgnore // ⚠️ Ngăn serialize danh sách subcategories
     private List<SubCategory> subCategories;
+    public Category(String categoryName) {
+        this.categoryName = categoryName;
+    }
+
+    public Category() {
+    }
 }

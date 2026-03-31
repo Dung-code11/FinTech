@@ -34,6 +34,23 @@ export const API_ENDPOINTS = {
     CREATE: `${API_BASE_URL}/transaction`,
     UPDATE: (id) => `${API_BASE_URL}/transaction/${id}`,
     DELETE: (id) => `${API_BASE_URL}/transaction/${id}`
+  },
+  BUDGET: {
+    GET_ALL: (walletId) => `${API_BASE_URL}/budgets/${walletId}`,
+    GET_DETAIL: (budgetId) => `${API_BASE_URL}/budgets/detail/${budgetId}`,
+    CREATE: (walletId) => `${API_BASE_URL}/budgets/${walletId}`,
+    UPDATE: (budgetId) => `${API_BASE_URL}/budgets/${budgetId}`,
+    DELETE: (budgetId) => `${API_BASE_URL}/budgets/${budgetId}`
+  },
+  DEBT: {
+    GET_ALL: `${API_BASE_URL}/debts`,
+    GET_BY_ID: (id) => `${API_BASE_URL}/debts/${id}`,
+    CREATE: `${API_BASE_URL}/debts`,
+    PAY: (id) => `${API_BASE_URL}/debts/${id}/pay`,
+    GET_PAYMENTS: (id) => `${API_BASE_URL}/debts/${id}/payments`,
+  },
+  AI: {
+    CHAT: `${API_BASE_URL}/ai/chat`
   }
 };
 

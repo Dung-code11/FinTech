@@ -17,5 +17,5 @@ public interface AccountRepository extends JpaRepository<Account, String> {
     WHERE a.username = :login OR i.email = :login
 """)
     Optional<Account> findByLogin(@Param("login") String login);
-
+    Optional<Account> findByUsername(String username);
 }

@@ -1,8 +1,11 @@
+/* ==================== CHATBOT STYLES ==================== */
 .chatBot {
   display: flex;
   flex-direction: column;
   height: 100%;
   background: white;
+  border-radius: 24px;
+  overflow: hidden;
 }
 
 /* Header */
@@ -22,8 +25,8 @@
 }
 
 .botAvatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   display: flex;
@@ -55,13 +58,14 @@
   animation: pulse 2s infinite;
 }
 
+.statusDot.loading {
+  background: #fbbf24;
+  animation: pulse 0.5s infinite;
+}
+
 @keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .closeBtn {
@@ -83,7 +87,7 @@
   transform: rotate(90deg);
 }
 
-/* Messages */
+/* Messages Container */
 .messagesContainer {
   flex: 1;
   overflow-y: auto;
@@ -94,6 +98,25 @@
   gap: 16px;
 }
 
+/* Custom scrollbar */
+.messagesContainer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messagesContainer::-webkit-scrollbar-track {
+  background: var(--gray-100);
+}
+
+.messagesContainer::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* Message Wrapper */
 .messageWrapper {
   display: flex;
   gap: 8px;
@@ -133,17 +156,19 @@
 }
 
 .messageBubble {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 18px;
   font-size: 0.9rem;
   line-height: 1.5;
   word-wrap: break-word;
+  max-width: 100%;
 }
 
 .bot .messageBubble {
   background: white;
   border: 1px solid var(--gray-200);
   border-bottom-left-radius: 4px;
+  color: var(--gray-700);
 }
 
 .user .messageBubble {
@@ -198,6 +223,27 @@
   }
 }
 
+/* Error Message */
+.errorMessage {
+  background: #fee2e2;
+  color: #ef4444;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.errorMessage button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-weight: 500;
+}
+
 /* Input Area */
 .chatInput {
   display: flex;
@@ -206,23 +252,6 @@
   padding: 12px 16px;
   background: white;
   border-top: 1px solid var(--gray-200);
-}
-
-.chatInput textarea {
-  flex: 1;
-  border: none;
-  background: var(--gray-100);
-  padding: 10px 12px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  resize: none;
-  max-height: 80px;
-  outline: none;
-  font-family: inherit;
-}
-
-.chatInput textarea:focus {
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
 }
 
 .attachBtn,
@@ -242,8 +271,8 @@
   flex-shrink: 0;
 }
 
-.attachBtn:hover,
-.micBtn:hover {
+.attachBtn:hover:not(:disabled),
+.micBtn:hover:not(:disabled) {
   background: var(--gray-200);
   color: var(--primary);
 }
@@ -258,29 +287,73 @@
   color: white;
 }
 
-.sendBtn.active:hover {
+.sendBtn.active:hover:not(:disabled) {
   transform: scale(1.05);
   box-shadow: 0 4px 10px rgba(25, 118, 210, 0.3);
 }
 
-.sendBtn:disabled {
+.sendBtn:disabled,
+.attachBtn:disabled,
+.micBtn:disabled {
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
-/* Scrollbar */
-.messagesContainer::-webkit-scrollbar {
-  width: 6px;
-}
-
-.messagesContainer::-webkit-scrollbar-track {
+.chatInput textarea {
+  flex: 1;
+  border: none;
   background: var(--gray-100);
+  padding: 10px 14px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  resize: none;
+  max-height: 80px;
+  outline: none;
+  font-family: inherit;
 }
 
-.messagesContainer::-webkit-scrollbar-thumb {
-  background: var(--gray-300);
-  border-radius: 3px;
+.chatInput textarea:focus {
+  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.1);
 }
 
-.messagesContainer::-webkit-scrollbar-thumb:hover {
-  background: var(--gray-400);
+.chatInput textarea:disabled {
+  background: var(--gray-50);
+  color: var(--gray-400);
+}
+
+/* Spinner */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .messageWrapper {
+    max-width: 95%;
+  }
+  
+  .messageBubble {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .chatInput {
+    padding: 8px 12px;
+  }
+  
+  .attachBtn,
+  .micBtn,
+  .sendBtn {
+    width: 32px;
+    height: 32px;
+  }
 }

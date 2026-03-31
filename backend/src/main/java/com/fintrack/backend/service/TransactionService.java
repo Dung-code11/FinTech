@@ -1,19 +1,21 @@
 package com.fintrack.backend.service;
 
 import com.fintrack.backend.dto.TransactionRequest;
+import com.fintrack.backend.enums.CategoryType;
 import com.fintrack.backend.enums.TransactionType;
 import com.fintrack.backend.enums.WalletType;
-import com.fintrack.backend.model.Category;
-import com.fintrack.backend.model.Transaction;
-import com.fintrack.backend.model.Wallet;
+import com.fintrack.backend.model.*;
 import com.fintrack.backend.repository.CategoryRepository;
 import com.fintrack.backend.repository.TransactionRepository;
 import com.fintrack.backend.repository.WalletRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -29,16 +31,16 @@ public class TransactionService {
     private CategoryRepository categoryRepository;
 
     // ================= GET ALL =================
-    public List<Transaction> getAll(String accountId){
-        return transactionRepository.findByWallet_Account_Id(accountId);
+    public List<Transaction> getAll(Account account){
+        return transactionRepository.findByWallet_Account_Id(account.getId());
     }
 
     // ================= GET BY ID =================
-    public Transaction getById(String id, String accountId){
+    public Transaction getById(String id, Account account){
         Transaction t = transactionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
-        if(!t.getWallet().getAccount().getId().equals(accountId)){
+        if(!t.getWallet().getAccount().getId().equals(account.getId())){
             throw new RuntimeException("Access denied");
         }
 
@@ -46,9 +48,10 @@ public class TransactionService {
     }
 
     // ================= CREATE =================
-    public Transaction create(TransactionRequest req, String accountId){
+    @Transactional
+    public Transaction create(TransactionRequest req, Account account){
 
-        Wallet wallet = getWalletAndCheck(req.walletId, accountId);
+        Wallet wallet = getWalletAndCheck(req.walletId, account.getId());
 
         Transaction t = new Transaction();
         t.setId(UUID.randomUUID().toString());
@@ -59,7 +62,7 @@ public class TransactionService {
         t.setCreatedAt(LocalDateTime.now());
 
         // category
-        handleCategory(req, t);
+        handleCategory(req, t, account);
 
         // xử lý tiền
         processMoney(t, wallet, req);
@@ -69,21 +72,22 @@ public class TransactionService {
     }
 
     // ================= UPDATE =================
-    public Transaction update(String id, TransactionRequest req, String accountId){
+    @Transactional
+    public Transaction update(String id, TransactionRequest req, Account account){
 
-        Transaction old = getById(id, accountId);
+        Transaction old = getById(id, account);
 
         // rollback tiền cũ trước 🧠
         rollbackMoney(old);
 
-        Wallet wallet = getWalletAndCheck(req.walletId, accountId);
+        Wallet wallet = getWalletAndCheck(req.walletId, account.getId());
 
         old.setType(TransactionType.valueOf(req.type));
         old.setAmount(req.amount);
         old.setDescription(req.description);
         old.setWallet(wallet);
 
-        handleCategory(req, old);
+        handleCategory(req, old, account);
 
         processMoney(old, wallet, req);
 
@@ -92,9 +96,10 @@ public class TransactionService {
     }
 
     // ================= DELETE =================
-    public void delete(String id, String accountId){
+    @Transactional
+    public void delete(String id, Account account){
 
-        Transaction t = getById(id, accountId);
+        Transaction t = getById(id, account);
 
         // hoàn lại tiền trước khi xoá 🔄
         rollbackMoney(t);
@@ -102,6 +107,111 @@ public class TransactionService {
         walletRepository.save(t.getWallet());
 
         transactionRepository.delete(t);
+    }
+
+    // 🎯 Tạo transaction từ việc trả nợ (EXPENSE)
+    @Transactional
+    public Transaction createDebtPaymentTransaction(
+            Wallet wallet,
+            String debtName,
+            Long debtId,
+            BigDecimal amount,
+            String note,
+            Account account) {
+
+        // 1. Tìm hoặc tạo category "Trả nợ"
+        Category debtCategory = findOrCreateCategory("Trả nợ", CategoryType.EXPENSE, account);
+
+        // 2. Tạo transaction
+        Transaction transaction = new Transaction();
+        transaction.setId(UUID.randomUUID().toString());
+        transaction.setType(TransactionType.EXPENSE);
+        transaction.setAmount(amount);
+
+        // Tạo description
+        String description = String.format("Trả nợ: %s (Mã nợ: %d)", debtName, debtId);
+        if (note != null && !note.isEmpty()) {
+            description += " - " + note;
+        }
+        transaction.setDescription(description);
+
+        transaction.setWallet(wallet);
+        transaction.setCategory(debtCategory);
+        transaction.setCreatedAt(LocalDateTime.now());
+
+        // 3. Lưu transaction
+        return transactionRepository.save(transaction);
+    }
+
+    // 🎯 Tạo transaction khi nhận tiền trả nợ (INCOME)
+    @Transactional
+    public Transaction createDebtIncomeTransaction(
+            Wallet wallet,
+            String debtName,
+            Long debtId,
+            BigDecimal amount,
+            String note,
+            Account account) {
+
+        // 1. Tìm hoặc tạo category "Thu nhập"
+        Category incomeCategory = findOrCreateCategory("Thu nhập", CategoryType.INCOME, account);
+
+        // 2. Tạo transaction
+        Transaction transaction = new Transaction();
+        transaction.setId(UUID.randomUUID().toString());
+        transaction.setType(TransactionType.INCOME);
+        transaction.setAmount(amount);
+
+        // Tạo description
+        String description = String.format("Nhận tiền trả nợ: %s (Mã nợ: %d)", debtName, debtId);
+        if (note != null && !note.isEmpty()) {
+            description += " - " + note;
+        }
+        transaction.setDescription(description);
+
+        transaction.setWallet(wallet);
+        transaction.setCategory(incomeCategory);
+        transaction.setCreatedAt(LocalDateTime.now());
+
+        // 3. Lưu transaction
+        return transactionRepository.save(transaction);
+    }
+
+    // Helper: Tìm hoặc tạo category
+    private Category findOrCreateCategory(String categoryName, CategoryType type, Account account) {
+        // Tìm category của user
+        List<Category> categories = categoryRepository.findByOwnerAndType(account, type);
+
+        for (Category cat : categories) {
+            if (categoryName.equals(cat.getCategoryName())) {
+                return cat;
+            }
+        }
+
+        // Tìm category mặc định
+        Optional<Category> defaultCategory = categoryRepository
+                .findByCategoryNameAndIsDefaultTrue(categoryName);
+
+        if (defaultCategory.isPresent()) {
+            Category defaultCat = defaultCategory.get();
+            // Clone cho user
+            Category userCategory = new Category();
+            userCategory.setId(UUID.randomUUID().toString());
+            userCategory.setCategoryName(defaultCat.getCategoryName());
+            userCategory.setType(defaultCat.getType());
+            userCategory.setOwner(account);
+            userCategory.setIsDefault(false);
+            return categoryRepository.save(userCategory);
+        }
+
+        // Tạo mới
+        Category newCategory = new Category();
+        newCategory.setId(UUID.randomUUID().toString());
+        newCategory.setCategoryName(categoryName);
+        newCategory.setType(type);
+        newCategory.setOwner(account);
+        newCategory.setIsDefault(false);
+        return categoryRepository.save(newCategory);
     }
 
     // ================= HELPER =================
@@ -117,13 +227,14 @@ public class TransactionService {
         return wallet;
     }
 
-    private void handleCategory(TransactionRequest req, Transaction t){
+    private void handleCategory(TransactionRequest req, Transaction t, Account account){
         if(req.categoryId != null){
             Category c = categoryRepository.findById(req.categoryId)
                     .orElseThrow(() -> new RuntimeException("Category not found"));
 
-            if(!c.getType().name().equals(req.type)){
-                throw new RuntimeException("Category type mismatch");
+            // Kiểm tra category thuộc về user hoặc là default
+            if(c.getOwner() != null && !c.getOwner().getId().equals(account.getId())){
+                throw new RuntimeException("Category does not belong to user");
             }
 
             t.setCategory(c);

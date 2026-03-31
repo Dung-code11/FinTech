@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { WalletProvider } from "./context/WalletContext";
 import { CategoryProvider } from "./context/CategoryContext";
 import { TransactionProvider } from "./context/TransactionContext";
+import { DebtProvider } from "./context/DebtContext";
 import PrivateRoute from "./components/PrivateRoute";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -23,6 +24,7 @@ function App() {
         <WalletProvider>
           <CategoryProvider>
             <TransactionProvider>
+              <DebtProvider>
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
@@ -43,6 +45,7 @@ function App() {
                   }
                 />
               </Routes>
+              </DebtProvider>
             </TransactionProvider>
           </CategoryProvider>
         </WalletProvider>

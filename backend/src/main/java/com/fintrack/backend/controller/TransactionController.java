@@ -21,7 +21,7 @@ public class TransactionController {
     @GetMapping
     public List<Transaction> getAll(Authentication auth){
         Account acc = (Account) auth.getPrincipal();
-        return service.getAll(acc.getId());
+        return service.getAll(acc); // Sửa: truyền Account thay vì String
     }
 
     // 🟢 GET BY ID
@@ -29,7 +29,7 @@ public class TransactionController {
     public Transaction getById(@PathVariable String id,
                                Authentication auth){
         Account acc = (Account) auth.getPrincipal();
-        return service.getById(id, acc.getId());
+        return service.getById(id, acc); // Sửa: truyền Account thay vì String
     }
 
     // 🟢 CREATE
@@ -37,7 +37,7 @@ public class TransactionController {
     public Transaction create(@RequestBody TransactionRequest req,
                               Authentication auth){
         Account acc = (Account) auth.getPrincipal();
-        return service.create(req, acc.getId());
+        return service.create(req, acc); // Sửa: truyền Account thay vì String
     }
 
     // 🟡 UPDATE
@@ -46,7 +46,7 @@ public class TransactionController {
                               @RequestBody TransactionRequest req,
                               Authentication auth){
         Account acc = (Account) auth.getPrincipal();
-        return service.update(id, req, acc.getId());
+        return service.update(id, req, acc); // Sửa: truyền Account thay vì String
     }
 
     // 🔴 DELETE
@@ -54,7 +54,7 @@ public class TransactionController {
     public String delete(@PathVariable String id,
                          Authentication auth){
         Account acc = (Account) auth.getPrincipal();
-        service.delete(id, acc.getId());
+        service.delete(id, acc); // Sửa: truyền Account thay vì String
         return "Delete transaction success";
     }
 }
