@@ -10,12 +10,16 @@ const BottomNav = ({ activeTab, onTabChange }) => {
     { id: 'settings', icon: <Settings size={20} />, label: 'Cài đặt' },
   ];
 
+  const currentTab = ['budget', 'debt', 'savings'].includes(activeTab)
+    ? 'currency'
+    : activeTab;
+
   return (
     <nav className={styles.bottomNav}>
-      {navItems.map(item => (
+      {navItems.map((item) => (
         <button
           key={item.id}
-          className={`${styles.navItem} ${activeTab === item.id ? styles.active : ''}`}
+          className={`${styles.navItem} ${currentTab === item.id ? styles.active : ''}`}
           onClick={() => onTabChange(item.id)}
         >
           {item.icon}

@@ -1,102 +1,215 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import styles from '../css/ChatBot.module.css';
-import { Send, Bot, User, X, Paperclip, Mic, RefreshCw } from 'lucide-react';
-import API_ENDPOINTS from '../config/api';
+import { Send, Bot, User, X, Sparkles, RefreshCw } from 'lucide-react';
+import { aiService } from '../services/aiService';
+import { useWallet } from '../context/WalletContext';
+import { useTransaction } from '../context/TransactionContext';
+import { useDebt } from '../context/DebtContext';
+import { useSavings } from '../context/SavingsContext';
 
-const ChatBot = ({ onClose }) => {
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      type: 'bot',
-      text: 'Xin chào! Tôi là trợ lý tài chính của bạn. Tôi có thể giúp gì cho bạn?',
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+const QUICK_PROMPTS = {
+  home: [
+    'Tổng quan tài chính tháng này của tôi',
+    'Ví nào đang còn bao nhiêu tiền?',
+    'Ngân sách nào sắp vượt mức?',
+  ],
+  transactions: [
+    'Ghi giúp tôi ăn trưa 45k',
+    '5 giao dịch gần nhất',
+    'Tháng này tôi đang chi nhiều vào đâu?',
+  ],
+  currency: [
+    'Tiết kiệm và nợ của tôi hiện ra sao?',
+    'Dự đoán đến cuối tháng',
+    'Có khoản chi nào đang lặp lại nhiều không?',
+  ],
+  admin: [
+    'Tổng quan tài chính cá nhân của tôi',
+    'Gợi ý điều tôi nên chú ý nhất lúc này',
+    'Tháng này dòng tiền của tôi đang thế nào?',
+  ],
+  default: [
+    'Tổng quan tài chính tháng này',
+    '5 giao dịch gần nhất',
+    'Dự đoán đến cuối tháng',
+  ],
+};
+
+const TAB_TITLES = {
+  home: 'Trang chủ',
+  transactions: 'Giao dịch',
+  currency: 'Công cụ',
+  admin: 'Quản trị',
+  settings: 'Cài đặt',
+};
+
+const createMessage = (type, text) => ({
+  id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  type,
+  text,
+  time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+});
+
+const createWelcomeMessage = (activeTab) =>
+  createMessage(
+    'bot',
+    `Xin chào, mình là trợ lý tài chính AI của bạn.\nBạn đang ở ${TAB_TITLES[activeTab] || 'FinTech'}.\nHãy hỏi mình về ví, giao dịch, ngân sách, tiết kiệm, nợ hoặc nhập thẳng một khoản thu/chi để mình ghi lại.`,
+  );
+
+const ChatBot = ({ onClose, activeTab, showQuickPrompts = true }) => {
+  const [messages, setMessages] = useState(() => [createWelcomeMessage(activeTab)]);
   const [inputMessage, setInputMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  
+  // Thêm refs để kiểm soát refresh
+  const refreshTimeoutRef = useRef(null);
+  const lastRefreshTimeRef = useRef(0);
+  const pendingScopesRef = useRef(new Set());
+  
+  const { loadWallets } = useWallet();
+  const { loadTransactions } = useTransaction();
+  const { loadDebts } = useDebt();
+  const { loadSavings } = useSavings();
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
-  // Hàm gọi API chat
-  const sendMessageToAI = async (message) => {
+  // Cleanup timeout khi unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Debounced refresh function
+  const debouncedRefresh = useCallback(async (scopes) => {
+    // Clear previous timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+    
+    // Add to pending scopes
+    scopes.forEach(scope => pendingScopesRef.current.add(scope));
+    
+    // Set new timeout
+    refreshTimeoutRef.current = setTimeout(async () => {
+      const scopesToRefresh = Array.from(pendingScopesRef.current);
+      pendingScopesRef.current.clear();
+      
+      // Check cooldown (2 seconds)
+      const now = Date.now();
+      if (now - lastRefreshTimeRef.current < 2000) {
+        console.log('⏱️ Skipping refresh - cooldown period');
+        return;
+      }
+      
+      lastRefreshTimeRef.current = now;
+      
+      console.log('🔄 Refreshing data for scopes:', scopesToRefresh);
+      
+      const tasks = [];
+      if (scopesToRefresh.includes('wallets')) tasks.push(loadWallets());
+      if (scopesToRefresh.includes('transactions')) tasks.push(loadTransactions());
+      if (scopesToRefresh.includes('debts')) tasks.push(loadDebts());
+      if (scopesToRefresh.includes('savings')) tasks.push(loadSavings());
+      
+      if (tasks.length > 0) {
+        await Promise.allSettled(tasks);
+        console.log('✅ Data refresh completed');
+      }
+    }, 500); // Debounce 500ms
+  }, [loadWallets, loadTransactions, loadDebts, loadSavings]);
+
+  const refreshData = async (refreshScopes) => {
+    const scopes = [...new Set(refreshScopes || [])];
+    if (scopes.length === 0) return;
+    
+    await debouncedRefresh(scopes);
+  };
+
+  // Kiểm tra xem câu nói có phải là hành động ghi dữ liệu không
+  const isWriteAction = (text) => {
+    const writeKeywords = [
+      'thêm', 'tạo', 'xóa', 'sửa', 'cập nhật', 'ghi', 'record', 'add', 'delete', 'update',
+      'insert', 'remove', 'edit', 'modify', 'xóa ví', 'thêm ví', 'tạo ví',
+      'xóa giao dịch', 'thêm giao dịch', 'sửa giao dịch'
+    ];
+    return writeKeywords.some(keyword => text.toLowerCase().includes(keyword));
+  };
+
+  const sendMessage = async (presetMessage) => {
+    const nextText = (presetMessage ?? inputMessage).trim();
+    if (!nextText || loading) return;
+
+    const userMessage = createMessage('user', nextText);
+    const nextHistory = [...messages, userMessage]
+      .slice(-8)
+      .map((message) => ({
+        role: message.type === 'bot' ? 'assistant' : 'user',
+        text: message.text,
+      }));
+
+    setMessages((previous) => [...previous, userMessage]);
+    setInputMessage('');
     setLoading(true);
     setError(null);
-    
-    try {
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch(`${API_ENDPOINTS.AI?.CHAT || 'http://localhost:8080/api/ai/chat'}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ message })
-      });
 
-      if (!response.ok) {
-        throw new Error(`Lỗi ${response.status}: ${response.statusText}`);
-      }
+    const result = await aiService.chat({
+      message: nextText,
+      activeTab,
+      history: nextHistory,
+    });
 
-      const data = await response.json();
-      return data.reply || data.message || 'Xin lỗi, tôi chưa hiểu câu hỏi của bạn.';
-    } catch (error) {
-      console.error('Chat API error:', error);
-      return 'Xin lỗi, có lỗi xảy ra khi kết nối đến máy chủ. Vui lòng thử lại sau.';
-    } finally {
+    if (!result.success) {
+      setError(result.error);
+      setMessages((previous) => [
+        ...previous,
+        createMessage('bot', 'Xin lỗi, mình chưa kết nối được tới chatbot. Bạn thử lại sau ít phút.'),
+      ]);
       setLoading(false);
+      return;
     }
-  };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-    if (loading) return;
-
-    // Thêm tin nhắn của user
-    const userMessage = {
-      id: messages.length + 1,
-      type: 'user',
-      text: inputMessage,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages(prev => [...prev, userMessage]);
-    const userQuestion = inputMessage;
-    setInputMessage('');
-    setIsTyping(true);
-
-    // Gọi API
-    const reply = await sendMessageToAI(userQuestion);
+    setMessages((previous) => [...previous, createMessage('bot', result.data.reply)]);
     
-    // Thêm phản hồi từ bot
-    const botMessage = {
-      id: messages.length + 2,
-      type: 'bot',
-      text: reply,
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages(prev => [...prev, botMessage]);
-    setIsTyping(false);
+    // Debug: Xem backend trả về gì
+    console.log('🔍 Backend response:', {
+      refreshScopes: result.data.refreshScopes,
+      action: result.data.action,
+      isWriteAction: isWriteAction(nextText)
+    });
+    
+    // CHỈ refresh khi có hành động ghi dữ liệu VÀ backend báo cần refresh
+    const needsRefresh = isWriteAction(nextText) && 
+                         result.data.refreshScopes && 
+                         result.data.refreshScopes.length > 0;
+    
+    if (needsRefresh) {
+      console.log('📝 Write action detected, refreshing data...');
+      await refreshData(result.data.refreshScopes);
+    } else if (result.data.refreshScopes && result.data.refreshScopes.length > 0) {
+      console.log('👀 Read action or no changes, skipping refresh');
+    }
+    
+    setLoading(false);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !loading) {
-      e.preventDefault();
-      handleSendMessage();
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey && !loading) {
+      event.preventDefault();
+      sendMessage();
     }
   };
+
+  const quickPrompts = QUICK_PROMPTS[activeTab] || QUICK_PROMPTS.default;
 
   return (
     <div className={styles.chatBot}>
-      {/* Header */}
       <div className={styles.chatHeader}>
         <div className={styles.headerLeft}>
           <div className={styles.botAvatar}>
@@ -106,18 +219,39 @@ const ChatBot = ({ onClose }) => {
             <h3>Trợ lý tài chính AI</h3>
             <p className={styles.botStatus}>
               <span className={`${styles.statusDot} ${loading ? styles.loading : ''}`} />
-              {loading ? 'Đang suy nghĩ...' : 'Sẵn sàng'}
+              {loading ? 'Đang xử lý...' : 'Sẵn sàng'}
             </p>
           </div>
         </div>
-        <button className={styles.closeBtn} onClick={onClose}>
+        <button className={styles.closeBtn} onClick={onClose} type="button">
           <X size={20} />
         </button>
       </div>
 
-      {/* Messages */}
       <div className={styles.messagesContainer}>
-        {messages.map(message => (
+        {messages.length === 1 && showQuickPrompts ? (
+          <div className={styles.hintCard}>
+            <div className={styles.hintTitle}>
+              <Sparkles size={16} />
+              Gợi ý theo {TAB_TITLES[activeTab] || 'màn hiện tại'}
+            </div>
+            <div className={styles.quickActions}>
+              {quickPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  className={styles.quickActionBtn}
+                  disabled={loading}
+                  onClick={() => sendMessage(prompt)}
+                  type="button"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {messages.map((message) => (
           <div
             key={message.id}
             className={`${styles.messageWrapper} ${styles[message.type]}`}
@@ -140,8 +274,8 @@ const ChatBot = ({ onClose }) => {
             )}
           </div>
         ))}
-        
-        {isTyping && (
+
+        {loading ? (
           <div className={`${styles.messageWrapper} ${styles.bot}`}>
             <div className={styles.messageAvatar}>
               <Bot size={16} />
@@ -154,38 +288,34 @@ const ChatBot = ({ onClose }) => {
               </div>
             </div>
           </div>
-        )}
-        
-        {error && (
+        ) : null}
+
+        {error ? (
           <div className={styles.errorMessage}>
             <span>⚠️ {error}</span>
-            <button onClick={() => setError(null)}>Đóng</button>
+            <button onClick={() => setError(null)} type="button">
+              Đóng
+            </button>
           </div>
-        )}
-        
+        ) : null}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className={styles.chatInput}>
-        <button className={styles.attachBtn} disabled={loading}>
-          <Paperclip size={18} />
-        </button>
         <textarea
           value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder={loading ? "Đang chờ phản hồi..." : "Nhập tin nhắn..."}
+          onChange={(event) => setInputMessage(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={loading ? 'Đang chờ phản hồi...' : 'Nhập câu hỏi hoặc khoản thu/chi...'}
           rows={1}
           disabled={loading}
         />
-        <button className={styles.micBtn} disabled={loading}>
-          <Mic size={18} />
-        </button>
-        <button 
+        <button
           className={`${styles.sendBtn} ${inputMessage.trim() && !loading ? styles.active : ''}`}
-          onClick={handleSendMessage}
+          onClick={() => sendMessage()}
           disabled={!inputMessage.trim() || loading}
+          type="button"
         >
           {loading ? <RefreshCw size={18} className={styles.spinner} /> : <Send size={18} />}
         </button>

@@ -1,46 +1,47 @@
-// app/(tabs)/_layout.tsx
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
-import { Colors } from '../../constants/colors';
 
-export default function TabLayout() {
+import { AppTheme } from '@/constants/theme';
+
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarStyle: {
-          backgroundColor: Colors.background,
-          borderTopWidth: 1,
-          borderTopColor: Colors.gray100,
-          height: Platform.OS === 'ios' ? 86 : 105,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 8,
+        headerShown: false,
+        sceneStyle: {
+          backgroundColor: AppTheme.colors.background,
+        },
+        tabBarActiveTintColor: AppTheme.colors.accent,
+        tabBarInactiveTintColor: AppTheme.colors.muted,
+        tabBarHideOnKeyboard: true,
+        tabBarItemStyle: {
           paddingTop: 8,
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.gray400,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: 11,
+          fontWeight: '700',
+          marginBottom: Platform.OS === 'ios' ? 0 : 8,
         },
-        headerStyle: {
-          backgroundColor: Colors.background,
+        tabBarStyle: {
+          backgroundColor: AppTheme.colors.surface,
+          borderColor: AppTheme.colors.line,
+          borderRadius: 26,
+          borderTopWidth: 1,
+          bottom: 16,
+          height: Platform.OS === 'ios' ? 78 : 74,
+          left: 16,
+          paddingBottom: Platform.OS === 'ios' ? 12 : 6,
+          paddingTop: 8,
+          position: 'absolute',
+          right: 16,
         },
-        headerTitleStyle: {
-          fontSize: 18,
-          fontWeight: '600',
-          color: Colors.gray800,
-        },
-        headerShadowVisible: false,
-      }}
-    >
+      }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Trang chủ',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-          headerShown: false,
+          title: 'Tổng quan',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="grid-outline" size={size} />,
         }}
       />
       <Tabs.Screen
@@ -48,39 +49,29 @@ export default function TabLayout() {
         options={{
           title: 'Giao dịch',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="swap-horizontal-outline" size={size} color={color} />
+            <Ionicons color={color} name="swap-horizontal-outline" size={size} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="wallet"
+        options={{
+          title: 'Ví',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="wallet-outline" size={size} />,
         }}
       />
       <Tabs.Screen
         name="currency"
         options={{
           title: 'Công cụ',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="pie-chart-outline" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="sparkles-outline" size={size} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Cài đặt',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      {/* Ẩn các tab không mong muốn */}
-      <Tabs.Screen
-        name="wallet"
-        options={{
-          href: null, // Ẩn tab này khỏi thanh điều hướng
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          href: null, // Ẩn tab này khỏi thanh điều hướng
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="settings-outline" size={size} />,
         }}
       />
     </Tabs>

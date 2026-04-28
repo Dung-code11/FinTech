@@ -1,7 +1,6 @@
 package com.fintrack.backend.controller;
 
 import com.fintrack.backend.dto.ChatRequest;
-
 import com.fintrack.backend.dto.Response.ChatResponse;
 import com.fintrack.backend.model.Account;
 import com.fintrack.backend.service.AiService;
@@ -18,12 +17,9 @@ public class AiController {
 
     @PostMapping("/chat")
     public ChatResponse chat(@RequestBody ChatRequest req,
-                             Authentication auth){
+                             Authentication auth) {
 
         Account acc = (Account) auth.getPrincipal();
-
-        String reply = aiService.chat(req.message, acc.getId());
-
-        return new ChatResponse(reply);
+        return aiService.chat(req, acc.getId());
     }
 }

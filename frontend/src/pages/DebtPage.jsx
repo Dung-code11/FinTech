@@ -21,7 +21,7 @@ import {
   Users,
 } from "lucide-react";
 
-const DebtPage = () => {
+const DebtPage = ({ embedded = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("debt");
   const [searchQuery, setSearchQuery] = useState("");
@@ -310,7 +310,7 @@ const DebtPage = () => {
           )}
         </div>
 
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        {!embedded && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
 
         {/* Debt Modal */}
         <DebtModal

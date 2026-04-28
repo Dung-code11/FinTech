@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "../context/WalletContext";
-import { useDebt } from "../context/DebtContext"; // Thêm useDebt
+import { useDebt } from "../context/DebtContext";
+import { useSavings } from "../context/SavingsContext"; // Thêm useSavings
 import { budgetService } from "../services/budgetService";
 import { debtService } from "../services/debtService";
+import { savingsService } from "../services/savingsService";
 import styles from "../css/CurrencyToolsPage.module.css";
 import {
   Wallet,
@@ -42,18 +44,20 @@ const CurrencyToolsPage = ({ onTabChange }) => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(false);
   const [budgets, setBudgets] = useState([]);
-  const [savingsGoals, setSavingsGoals] = useState([]);
+  const [savings, setSavings] = useState([]); // Đổi tên cho rõ
   const [debts, setDebts] = useState([]);
   const [challenges, setChallenges] = useState([]);
 
   const navigate = useNavigate();
   const { wallets, loadWallets } = useWallet();
-  const { debts: debtsFromContext, loadDebts } = useDebt(); // Lấy từ context
+  const { debts: debtsFromContext, loadDebts } = useDebt();
+  const { savings: savingsFromContext, loadSavings } = useSavings(); // Lấy từ context
   const [selectedWallet, setSelectedWallet] = useState(null);
 
   useEffect(() => {
     loadWallets();
-    loadDebts(); // Load debts khi mount
+    loadDebts();
+    loadSavings(); // Load savings khi mount
   }, []);
 
   useEffect(() => {
@@ -68,12 +72,18 @@ const CurrencyToolsPage = ({ onTabChange }) => {
     }
   }, [selectedWallet]);
 
-  // Cập nhật debts khi dữ liệu từ context thay đổi
+  // Cập nhật dữ liệu từ context
   useEffect(() => {
     if (debtsFromContext) {
       setDebts(debtsFromContext);
     }
   }, [debtsFromContext]);
+
+  useEffect(() => {
+    if (savingsFromContext) {
+      setSavings(savingsFromContext);
+    }
+  }, [savingsFromContext]);
 
   const loadBudgets = async () => {
     setLoading(true);
@@ -113,13 +123,32 @@ const CurrencyToolsPage = ({ onTabChange }) => {
   // Tính tổng số nợ và đã trả
   const calculateDebtStats = () => {
     const totalDebt = debts.reduce((sum, d) => sum + (d.amount || 0), 0);
-    const totalPaid = debts.reduce((sum, d) => sum + (d.paidAmount || 0), 0);
-    const remaining = totalDebt - totalPaid;
+    const remaining = debts.reduce(
+      (sum, d) =>
+        sum + (d.remainingAmount ?? Math.max((d.amount || 0) - (d.paidAmount || 0), 0)),
+      0,
+    );
+    const totalPaid = Math.max(totalDebt - remaining, 0);
     const progress = totalDebt > 0 ? (totalPaid / totalDebt) * 100 : 0;
     return { totalDebt, totalPaid, remaining, progress };
   };
 
+  // Tính tổng số tiền tiết kiệm
+  const calculateSavingsStats = () => {
+    const totalGoals = savings.filter(s => s.type === 'GOAL').length;
+    const totalRecurring = savings.filter(s => s.type === 'PERIODIC').length;
+    const totalTargetAmount = savings
+      .filter(s => s.type === 'GOAL')
+      .reduce((sum, s) => sum + (s.targetAmount || 0), 0);
+    const totalSaved = savings
+      .filter(s => s.type === 'GOAL')
+      .reduce((sum, s) => sum + (s.currentAmount || 0), 0);
+    const progress = totalTargetAmount > 0 ? (totalSaved / totalTargetAmount) * 100 : 0;
+    return { totalGoals, totalRecurring, totalTargetAmount, totalSaved, progress };
+  };
+
   const debtStats = calculateDebtStats();
+  const savingsStats = calculateSavingsStats();
 
   // Tools data với dữ liệu thực
   const tools = [
@@ -150,13 +179,15 @@ const CurrencyToolsPage = ({ onTabChange }) => {
       icon: <PiggyBank size={32} />,
       color: "#10b981",
       bgColor: "#d1fae5",
-      stats: "Sắp ra mắt",
-      progress: 0,
+      stats: savings.length > 0 
+        ? `${savingsStats.totalGoals} mục tiêu - Đã đạt ${savingsStats.progress.toFixed(0)}%`
+        : "Chưa có mục tiêu",
+      progress: savingsStats.progress,
       link: "/savings",
       features: [
         "Mục tiêu thông minh",
-        "Tự động trích tiền",
-        "Lãi suất ưu đãi",
+        "Tiết kiệm định kỳ",
+        "Theo dõi tiến độ",
       ],
     },
     {
@@ -196,15 +227,32 @@ const CurrencyToolsPage = ({ onTabChange }) => {
       icon: "💰",
       count: budgets.length || 1,
     },
-    { id: "savings", label: "Tiết kiệm", icon: "🏦", count: 1 },
+    { id: "savings", label: "Tiết kiệm", icon: "🏦", count: savings.length || 1 },
     { id: "debt", label: "Nợ", icon: "💳", count: debts.length || 1 },
     { id: "challenge", label: "Thử thách", icon: "🏆", count: 1 },
   ];
 
-  const filteredTools =
-    selectedCategory === "all"
-      ? tools
-      : tools.filter((tool) => tool.id === selectedCategory);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredTools = tools.filter((tool) => {
+    const matchesCategory =
+      selectedCategory === "all" || tool.id === selectedCategory;
+
+    if (!matchesCategory) {
+      return false;
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    return (
+      tool.title.toLowerCase().includes(normalizedQuery) ||
+      tool.description.toLowerCase().includes(normalizedQuery) ||
+      tool.features.some((feature) =>
+        feature.toLowerCase().includes(normalizedQuery),
+      )
+    );
+  });
 
   const featuredTools = [
     {
@@ -236,6 +284,8 @@ const CurrencyToolsPage = ({ onTabChange }) => {
   const handleToolClick = (tool) => {
     if (tool.id === "budget") {
       onTabChange("budget");
+    } else if (tool.id === "savings") {
+      onTabChange("savings");
     } else if (tool.id === "debt") {
       onTabChange("debt");
     } else {
@@ -372,7 +422,7 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                   className={styles.toolCard}
                   onClick={() => handleToolClick(tool)}
                   style={{
-                    cursor: tool.id === "budget" || tool.id === "debt" ? "pointer" : "not-allowed",
+                    cursor: tool.id === "budget" || tool.id === "savings" || tool.id === "debt" ? "pointer" : "not-allowed",
                   }}
                 >
                   <div className={styles.toolHeader}>
@@ -391,6 +441,8 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                         e.stopPropagation();
                         if (tool.id === "budget") {
                           onTabChange("budget");
+                        } else if (tool.id === "savings") {
+                          onTabChange("savings");
                         } else if (tool.id === "debt") {
                           onTabChange("debt");
                         } else {
@@ -408,12 +460,14 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                     <h3 className={styles.toolTitle}>{tool.title}</h3>
                     <p className={styles.toolDescription}>{tool.description}</p>
 
-                    {/* Progress Bar - Chỉ hiển thị cho ngân sách và nợ */}
-                    {(tool.id === "budget" || tool.id === "debt") && (
+                    {/* Progress Bar - Chỉ hiển thị cho ngân sách, tiết kiệm và nợ */}
+                    {(tool.id === "budget" || tool.id === "savings" || tool.id === "debt") && (
                       <div className={styles.progressSection}>
                         <div className={styles.progressHeader}>
                           <span className={styles.progressLabel}>
-                            {tool.id === "budget" ? "Tiến độ chi tiêu" : "Tiến độ trả nợ"}
+                            {tool.id === "budget" ? "Tiến độ chi tiêu" : 
+                             tool.id === "savings" ? "Tiến độ tiết kiệm" : 
+                             "Tiến độ trả nợ"}
                           </span>
                           <span className={styles.progressValue}>
                             {tool.progress.toFixed(1)}%
@@ -458,6 +512,8 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                         e.stopPropagation();
                         if (tool.id === "budget") {
                           onTabChange("budget");
+                        } else if (tool.id === "savings") {
+                          onTabChange("savings");
                         } else if (tool.id === "debt") {
                           onTabChange("debt");
                         } else {
@@ -468,9 +524,9 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                       }}
                     >
                       <span>
-                        {tool.id === "budget" || tool.id === "debt" ? "Bắt đầu" : "Sắp ra mắt"}
+                        {tool.id === "budget" || tool.id === "savings" || tool.id === "debt" ? "Bắt đầu" : "Sắp ra mắt"}
                       </span>
-                      {(tool.id === "budget" || tool.id === "debt") && <ChevronRight size={16} />}
+                      {(tool.id === "budget" || tool.id === "savings" || tool.id === "debt") && <ChevronRight size={16} />}
                     </button>
                     <button
                       className={styles.secondaryBtn}
@@ -478,6 +534,8 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                         e.stopPropagation();
                         if (tool.id === "budget") {
                           onTabChange("budget");
+                        } else if (tool.id === "savings") {
+                          onTabChange("savings");
                         } else if (tool.id === "debt") {
                           onTabChange("debt");
                         } else {
@@ -509,16 +567,16 @@ const CurrencyToolsPage = ({ onTabChange }) => {
                 <span className={styles.statBoxLabel}>Ngân sách</span>
               </div>
               <div className={styles.statBox}>
+                <span className={styles.statBoxValue}>{savings.length}</span>
+                <span className={styles.statBoxLabel}>Tiết kiệm</span>
+              </div>
+              <div className={styles.statBox}>
                 <span className={styles.statBoxValue}>{debts.length}</span>
                 <span className={styles.statBoxLabel}>Khoản nợ</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statBoxValue}>0</span>
                 <span className={styles.statBoxLabel}>Thử thách</span>
-              </div>
-              <div className={styles.statBox}>
-                <span className={styles.statBoxValue}>0</span>
-                <span className={styles.statBoxLabel}>Kỷ lục</span>
               </div>
             </div>
           </div>

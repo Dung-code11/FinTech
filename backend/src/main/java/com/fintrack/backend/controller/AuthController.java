@@ -60,10 +60,19 @@ public class AuthController {
 
         authService.resetPassword(
                 request.getEmail(),
+                request.getOtp(),
                 request.getNewPassword()
         );
 
         return "Password updated";
 
+    }
+    @PutMapping("/admin/account/{id}/status")
+    public String updateStatus(@PathVariable String id,
+                               @RequestParam boolean status) {
+
+        authService.toggleAccount(id, status);
+
+        return "Updated successfully";
     }
 }

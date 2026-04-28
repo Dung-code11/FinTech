@@ -24,6 +24,9 @@ public class Account {
     @Enumerated(EnumType.STRING)
     private Role role;
 
+    @Column(name = "is_actived")
+    private Boolean isActived = true;
+
     @OneToOne(mappedBy = "account", cascade = CascadeType.ALL)
     private InfoUser infoUser;
 

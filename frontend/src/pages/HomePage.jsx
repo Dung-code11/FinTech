@@ -4,7 +4,6 @@ import { useWallet } from '../context/WalletContext';
 import { useTransaction } from '../context/TransactionContext';
 import Sidebar from '../components/dashboard/Sidebar';
 import Header from '../components/layout/Header';
-import BottomNav from '../components/layout/BottomNav';
 import { WalletGrid, DailyExpenseCard } from '../components/dashboard/StatCard';
 import NetChangeCard from '../components/dashboard/NetChangeCard';
 import TransactionList from '../components/dashboard/TransactionList';
@@ -13,7 +12,6 @@ import styles from '../css/DashboardPage.module.css';
 
 const HomePage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
   const [showWalletDialog, setShowWalletDialog] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState('all'); // State để lưu ví được chọn
   const { user } = useAuth();
@@ -79,9 +77,6 @@ const HomePage = () => {
           wallets={wallets}
           selectedWalletId={selectedWallet}
         />
-
-        {/* Bottom Navigation (Mobile) */}
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* Wallet Dialog */}
         <WalletDialog 

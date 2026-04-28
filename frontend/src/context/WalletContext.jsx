@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useRef } from "react";
 import { walletService } from "../services/walletService";
 import { useAuth } from "../hooks/useAuth";
 
@@ -9,8 +9,8 @@ export const WalletProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { isAuthenticated } = useAuth();
+  const loadingRef = useRef(false); // Thêm ref để tránh duplicate calls
 
-  // Load wallets khi user đăng nhập
   useEffect(() => {
     if (isAuthenticated) {
       loadWallets();
@@ -18,18 +18,38 @@ export const WalletProvider = ({ children }) => {
   }, [isAuthenticated]);
 
   const loadWallets = async () => {
+    // Tránh gọi đồng thời nhiều lần
+    if (loadingRef.current) {
+      console.log('⚠️ loadWallets already in progress, skipping...');
+      return;
+    }
+
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
     const result = await walletService.getWallets();
 
     if (result.success) {
-      setWallets(result.data);
+      // Kiểm tra duplicate IDs trước khi set state
+      const uniqueWallets = result.data.filter((wallet, index, self) => 
+        index === self.findIndex(w => w.id === wallet.id)
+      );
+      
+      if (uniqueWallets.length !== result.data.length) {
+        console.warn('⚠️ Duplicate wallets detected and removed!', {
+          original: result.data.length,
+          unique: uniqueWallets.length
+        });
+      }
+      
+      setWallets(uniqueWallets);
     } else {
       setError(result.error);
     }
 
     setLoading(false);
+    loadingRef.current = false;
   };
 
   const getWalletById = async (walletId) => {
@@ -43,19 +63,29 @@ export const WalletProvider = ({ children }) => {
   };
 
   const createWallet = async (walletData) => {
+    // Thêm debounce cho create
+    if (loadingRef.current) {
+      console.log('⚠️ Already creating wallet, skipping...');
+      return { success: false, error: 'Đang xử lý, vui lòng đợi' };
+    }
+
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
 
     const result = await walletService.createWallet(walletData);
 
     if (result.success) {
-      // Load lại danh sách ví sau khi tạo thành công
-      await loadWallets();
+      // Đợi 500ms trước khi reload để tránh race condition
+      setTimeout(async () => {
+        await loadWallets();
+      }, 500);
     } else {
       setError(result.error);
     }
 
     setLoading(false);
+    loadingRef.current = false;
     return result;
   };
 
@@ -91,13 +121,11 @@ export const WalletProvider = ({ children }) => {
     return result;
   };
 
-  // Tính tổng số dư tất cả ví
   const getTotalBalance = () => {
     return wallets.reduce((total, wallet) => {
       if (wallet.type === "CASH") {
         return total + (wallet.balance || 0);
       } else {
-        // Với thẻ tín dụng, tính số dư khả dụng = creditLimit - unpaidBalance
         const availableCredit =
           (wallet.creditLimit || 0) - (wallet.unpaidBalance || 0);
         return total + availableCredit;
@@ -105,7 +133,6 @@ export const WalletProvider = ({ children }) => {
     }, 0);
   };
 
-  // Lấy danh sách ví để hiển thị trong dropdown
   const getWalletOptions = () => {
     return [
       { id: "all", name: "Tất cả ví", type: "ALL" },
@@ -137,7 +164,6 @@ export const WalletProvider = ({ children }) => {
   );
 };
 
-// Custom hook để sử dụng WalletContext
 export const useWallet = () => {
   const context = useContext(WalletContext);
   if (!context) {

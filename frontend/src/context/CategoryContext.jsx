@@ -22,25 +22,35 @@ export const CategoryProvider = ({ children }) => {
     setError(null);
 
     try {
-      // Load expense categories
-      const expenseResult = await categoryService.getCategories('EXPENSE');
+      const [expenseResult, incomeResult] = await Promise.all([
+        categoryService.getCategories('EXPENSE'),
+        categoryService.getCategories('INCOME')
+      ]);
+
       if (expenseResult.success) {
-        const formattedExpense = (Array.isArray(expenseResult.data) ? expenseResult.data : []).map(c => 
-          categoryService.formatCategory(c)
+        const formattedExpense = (Array.isArray(expenseResult.data) ? expenseResult.data : []).map((category) =>
+          categoryService.formatCategory(category)
         );
         setExpenseCategories(formattedExpense);
+      } else {
+        setExpenseCategories([]);
       }
 
-      // Load income categories
-      const incomeResult = await categoryService.getCategories('INCOME');
       if (incomeResult.success) {
-        const formattedIncome = (Array.isArray(incomeResult.data) ? incomeResult.data : []).map(c => 
-          categoryService.formatCategory(c)
+        const formattedIncome = (Array.isArray(incomeResult.data) ? incomeResult.data : []).map((category) =>
+          categoryService.formatCategory(category)
         );
         setIncomeCategories(formattedIncome);
+      } else {
+        setIncomeCategories([]);
       }
+
+      const nextError = expenseResult.error || incomeResult.error || null;
+      setError(nextError);
     } catch (err) {
       console.error('Load categories error:', err);
+      setExpenseCategories([]);
+      setIncomeCategories([]);
       setError(err.message);
     } finally {
       setLoading(false);

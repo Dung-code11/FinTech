@@ -47,10 +47,32 @@ export const API_ENDPOINTS = {
     GET_BY_ID: (id) => `${API_BASE_URL}/debts/${id}`,
     CREATE: `${API_BASE_URL}/debts`,
     PAY: (id) => `${API_BASE_URL}/debts/${id}/pay`,
-    GET_PAYMENTS: (id) => `${API_BASE_URL}/debts/${id}/payments`,
+    GET_PAYMENTS: (id) => `${API_BASE_URL}/debts/${id}/payments`
+  },
+  SAVINGS: {
+    GET_BY_WALLET: (walletId) => `${API_BASE_URL}/savings/${walletId}`,
+    CREATE: (walletId) => `${API_BASE_URL}/savings/${walletId}`,
+    DEPOSIT: (savingId) => `${API_BASE_URL}/savings/deposit/${savingId}`,
+    WITHDRAW: (savingId) => `${API_BASE_URL}/savings/withdraw/${savingId}`
   },
   AI: {
     CHAT: `${API_BASE_URL}/ai/chat`
+  },
+  ADMIN: {
+    STATS: `${API_BASE_URL}/admin/stats`,
+    USERS: `${API_BASE_URL}/admin/users`,
+    USER_BY_ID: (id) => `${API_BASE_URL}/admin/users/${id}`,
+    USER_STATUS: (id) => `${API_BASE_URL}/admin/users/${id}/status`,
+    USER_ROLE: (id) => `${API_BASE_URL}/admin/users/${id}/role`,
+    WALLETS: `${API_BASE_URL}/admin/wallets`,
+    TRANSACTIONS: `${API_BASE_URL}/admin/transactions`,
+    DELETE_TRANSACTION: (id) => `${API_BASE_URL}/admin/transactions/${id}`,
+    DEBTS: `${API_BASE_URL}/admin/debts`,
+    SAVINGS: `${API_BASE_URL}/admin/savings`,
+    DASHBOARD: `${API_BASE_URL}/admin/dashboard`
+  },
+  USER: {
+    PROFILE: `${API_BASE_URL}/user/profile`
   }
 };
 

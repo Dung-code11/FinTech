@@ -1,0 +1,68 @@
+export const AppTheme = {
+  colors: {
+    background: '#F3F5F1',
+    surface: '#FFFFFF',
+    surfaceMuted: '#E7EDE6',
+    surfaceStrong: '#DCE7E0',
+    ink: '#152238',
+    inkSoft: '#42506A',
+    muted: '#6B7891',
+    line: '#D6DFD4',
+    accent: '#0F766E',
+    accentAlt: '#14B8A6',
+    accentSoft: '#D7F4EF',
+    navy: '#12314A',
+    gold: '#D97706',
+    goldSoft: '#FEF3C7',
+    success: '#15803D',
+    successSoft: '#DCFCE7',
+    danger: '#C2410C',
+    dangerSoft: '#FEE2E2',
+    warning: '#B45309',
+    warningSoft: '#FFEDD5',
+  },
+  spacing: {
+    xs: 8,
+    sm: 12,
+    md: 16,
+    lg: 20,
+    xl: 24,
+    xxl: 32,
+  },
+  radii: {
+    sm: 12,
+    md: 18,
+    lg: 24,
+    xl: 32,
+    pill: 999,
+  },
+  shadow: {
+    card: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 6,
+    },
+    soft: {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.05,
+      shadowRadius: 14,
+      elevation: 3,
+    },
+  },
+  gradients: {
+    hero: ['#102A43', '#0F766E', '#14B8A6'] as const,
+    auth: ['#F7FBF8', '#EDF8F5', '#FFF7ED'] as const,
+    action: ['#0F766E', '#14B8A6'] as const,
+    onboardingA: ['#12314A', '#0F766E'] as const,
+    onboardingB: ['#9A3412', '#F97316'] as const,
+    onboardingC: ['#164E63', '#0EA5E9'] as const,
+  },
+} as const;
+
+export const ThemeModes = {
+  light: AppTheme.colors,
+  dark: AppTheme.colors,
+} as const;

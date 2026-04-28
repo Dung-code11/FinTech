@@ -1,275 +1,395 @@
 package com.fintrack.backend.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fintrack.backend.dto.Response.ChatResponse;
 import com.fintrack.backend.enums.CategoryType;
 import com.fintrack.backend.enums.TransactionType;
+import com.fintrack.backend.model.Account;
 import com.fintrack.backend.model.Category;
 import com.fintrack.backend.model.Transaction;
 import com.fintrack.backend.model.Wallet;
+import com.fintrack.backend.repository.AccountRepository;
 import com.fintrack.backend.repository.CategoryRepository;
 import com.fintrack.backend.repository.TransactionRepository;
 import com.fintrack.backend.repository.WalletRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.*;
+import java.math.RoundingMode;
+import java.text.Normalizer;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class TransactionAIService {
 
-    @Autowired
-    private GeminiService geminiService;
+    private static final Pattern MONEY_PATTERN = Pattern.compile("(\\d+(?:[\\.,]\\d+)*)\\s*(ty|ti|trieu|tr|nghin|ngan|k|m|b|vnd|d|dong)?", Pattern.CASE_INSENSITIVE);
 
-    @Autowired
-    private WalletRepository walletRepository;
+    private final GeminiService geminiService;
+    private final WalletRepository walletRepository;
+    private final TransactionRepository transactionRepository;
+    private final CategoryRepository categoryRepository;
+    private final AccountRepository accountRepository;
 
-    @Autowired
-    private TransactionRepository transactionRepository;
+    public ChatResponse handleTransaction(String message, String accountId) {
+        String normalized = normalize(message);
 
-    @Autowired
-    private CategoryRepository categoryRepository;
+        if (!looksLikeTransactionRequest(normalized)) {
+            return null;
+        }
 
-    private final ObjectMapper mapper = new ObjectMapper();
+        ParsedTransaction parsed = parseHeuristically(message, normalized);
+        if (parsed.requiresAmount()) {
+            return ChatResponse.builder()
+                    .reply("Mình hiểu bạn muốn ghi giao dịch nhưng chưa thấy số tiền rõ ràng. Ví dụ: \"ăn trưa 45k\" hoặc \"nhận lương 15tr\".")
+                    .action("NEEDS_CLARIFICATION")
+                    .refreshScopes(List.of())
+                    .build();
+        }
 
-    // ================= MAIN =================
-    public String handleTransaction(String message, String accountId) {
+        if (!parsed.isTransaction()) {
+            parsed = parseWithGemini(message);
+        }
+
+        if (parsed == null || !parsed.isTransaction() || parsed.amount() == null || parsed.amount().compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        return saveTransaction(accountId, message.trim(), normalized, parsed);
+    }
+
+    private ChatResponse saveTransaction(String accountId,
+                                         String originalMessage,
+                                         String normalizedMessage,
+                                         ParsedTransaction parsed) {
+
+        List<Wallet> wallets = walletRepository.findByAccount_Id(accountId);
+        if (wallets.isEmpty()) {
+            return ChatResponse.builder()
+                    .reply("Bạn chưa có ví nào để mình ghi giao dịch. Hãy tạo ví trước rồi thử lại.")
+                    .action("NO_WALLET")
+                    .refreshScopes(List.of())
+                    .build();
+        }
+
+        Wallet wallet = resolveWallet(wallets, normalizedMessage);
+        Category category = categoryRepository
+                .findSmartCategoryByNameAndType(
+                        parsed.categoryName(),
+                        parsed.type() == TransactionType.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE,
+                        accountId
+                )
+                .orElseGet(() -> createCategory(accountId, parsed.categoryName(), parsed.type()));
+
+        applyMoneyEffect(wallet, parsed.type(), parsed.amount());
+        walletRepository.save(wallet);
+
+        Transaction transaction = new Transaction();
+        transaction.setId(UUID.randomUUID().toString());
+        transaction.setWallet(wallet);
+        transaction.setAmount(parsed.amount());
+        transaction.setDescription(buildDescription(originalMessage));
+        transaction.setType(parsed.type());
+        transaction.setCategory(category);
+        transaction.setCreatedAt(LocalDateTime.now());
+        transactionRepository.save(transaction);
+
+        String walletSummary = "CREDIT".equalsIgnoreCase(wallet.getType().name())
+                ? "Dư nợ hiện tại của " + wallet.getName() + " là " + formatCurrency(safe(wallet.getUnpaidBalance())) + "."
+                : "Số dư hiện tại của " + wallet.getName() + " là " + formatCurrency(safe(wallet.getInitialBalance())) + ".";
+
+        String reply = "Đã ghi "
+                + (parsed.type() == TransactionType.INCOME ? "khoản thu " : "khoản chi ")
+                + formatCurrency(parsed.amount())
+                + " cho \""
+                + transaction.getDescription()
+                + "\".\n"
+                + "- Danh mục: "
+                + category.getCategoryName()
+                + "\n- "
+                + walletSummary;
+
+        return ChatResponse.builder()
+                .reply(reply)
+                .action("TRANSACTION_RECORDED")
+                .refreshScopes(List.of("wallets", "transactions"))
+                .build();
+    }
+
+    private ParsedTransaction parseHeuristically(String message, String normalized) {
+        boolean explicitRecordCommand = containsAny(normalized, "ghi giao dich", "them giao dich", "luu giao dich", "ghi lai", "ghi");
+        BigDecimal amount = extractAmount(message);
+        TransactionType type = detectType(normalized);
+
+        if (amount == null && explicitRecordCommand) {
+            return ParsedTransaction.missingAmount();
+        }
+
+        if (amount == null || type == null) {
+            return ParsedTransaction.notTransaction();
+        }
+
+        String category = detectCategory(normalized, type);
+        return new ParsedTransaction(true, false, type, amount, category);
+    }
+
+    private ParsedTransaction parseWithGemini(String message) {
+        if (!geminiService.isAvailable()) {
+            return ParsedTransaction.notTransaction();
+        }
+
+        String prompt = """
+                Trích xuất giao dịch tài chính từ câu sau và trả đúng 1 JSON object.
+                Các field:
+                - isTransaction: true hoặc false
+                - type: INCOME hoặc EXPENSE
+                - amount: số tiền VND dạng số
+                - category: tên danh mục ngắn gọn
+
+                Nếu không chắc đây là giao dịch cần ghi nhận, đặt isTransaction=false.
+                Chỉ trả JSON.
+
+                Câu: "%s"
+                """.formatted(message);
+
+        Map<String, Object> json = geminiService.parseJsonObject(geminiService.callGemini(prompt, ""));
+        if (json.isEmpty() || !Boolean.TRUE.equals(json.get("isTransaction"))) {
+            return ParsedTransaction.notTransaction();
+        }
 
         try {
-            String aiResponse = geminiService.callGemini(buildPrompt(message));
-            JsonNode json = mapper.readTree(aiResponse);
-
-            // 🔥 nếu AI bảo không phải transaction → fallback
-            if (json.has("isTransaction") && !json.get("isTransaction").asBoolean()) {
-                return fallbackProcess(message, accountId);
-            }
-
-            TransactionType type = parseType(json);
-            BigDecimal amount = parseAmount(json);
-            String desc = parseDescription(json, message);
-            String categoryName = parseCategory(json);
-
-            if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-                return fallbackProcess(message, accountId);
-            }
-
-            return saveTransaction(accountId, type, amount, desc, categoryName);
-
+            TransactionType type = TransactionType.valueOf(String.valueOf(json.get("type")).toUpperCase(Locale.ROOT));
+            BigDecimal amount = new BigDecimal(String.valueOf(json.get("amount")));
+            String category = normalizeCategory(String.valueOf(json.getOrDefault("category", "Khác")), type);
+            return new ParsedTransaction(true, false, type, amount, category);
         } catch (Exception e) {
-            // 🔥 cực quan trọng: luôn fallback
-            return fallbackProcess(message, accountId);
+            return ParsedTransaction.notTransaction();
         }
     }
 
-    // ================= SAVE =================
-    private String saveTransaction(String accountId,
-                                   TransactionType type,
-                                   BigDecimal amount,
-                                   String desc,
-                                   String categoryName) {
+    private void applyMoneyEffect(Wallet wallet, TransactionType type, BigDecimal amount) {
+        if ("CREDIT".equalsIgnoreCase(wallet.getType().name())) {
+            BigDecimal unpaidBalance = safe(wallet.getUnpaidBalance());
+            wallet.setUnpaidBalance(type == TransactionType.INCOME
+                    ? unpaidBalance.subtract(amount)
+                    : unpaidBalance.add(amount));
+            return;
+        }
 
-        Wallet wallet = walletRepository
-                .findByAccount_Id(accountId)
-                .stream()
+        BigDecimal balance = safe(wallet.getInitialBalance());
+        wallet.setInitialBalance(type == TransactionType.INCOME
+                ? balance.add(amount)
+                : balance.subtract(amount));
+    }
+
+    private Category createCategory(String accountId, String name, TransactionType type) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        Category category = new Category();
+        category.setId(UUID.randomUUID().toString());
+        category.setCategoryName(name);
+        category.setType(type == TransactionType.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE);
+        category.setOwner(account);
+        category.setIsDefault(false);
+        return categoryRepository.save(category);
+    }
+
+    private Wallet resolveWallet(List<Wallet> wallets, String normalizedMessage) {
+        Optional<Wallet> walletByName = wallets.stream()
+                .filter(wallet -> normalizedMessage.contains(normalize(wallet.getName())))
+                .findFirst();
+
+        if (walletByName.isPresent()) {
+            return walletByName.get();
+        }
+
+        boolean preferCredit = containsAny(normalizedMessage, "the", "credit", "visa", "master");
+        if (preferCredit) {
+            return wallets.stream()
+                    .filter(wallet -> "CREDIT".equalsIgnoreCase(wallet.getType().name()))
+                    .findFirst()
+                    .orElse(wallets.get(0));
+        }
+
+        return wallets.stream()
+                .filter(wallet -> "CASH".equalsIgnoreCase(wallet.getType().name()))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy ví"));
-
-        Category category = categoryRepository
-                .findSmartCategory(categoryName, accountId)
-                .orElseGet(() -> createCategory(categoryName, type));
-
-        Transaction t = new Transaction();
-        t.setId(UUID.randomUUID().toString());
-        t.setWallet(wallet);
-        t.setAmount(amount);
-        t.setDescription(desc);
-        t.setType(type);
-        t.setCategory(category);
-
-        transactionRepository.save(t);
-
-        return buildCuteResponse(type, amount.longValue(), desc);
+                .orElse(wallets.get(0));
     }
 
-    // ================= CATEGORY =================
-    private Category createCategory(String name, TransactionType type) {
-        Category c = new Category();
-        c.setId(UUID.randomUUID().toString());
-        c.setCategoryName(name);
-        c.setType(type == TransactionType.EXPENSE
-                ? CategoryType.EXPENSE
-                : CategoryType.INCOME);
-        c.setIsDefault(false);
-        return categoryRepository.save(c);
+    private String buildDescription(String originalMessage) {
+        String message = originalMessage.trim();
+        return message.length() > 120 ? message.substring(0, 120) : message;
     }
 
-    // ================= AI PARSE =================
-    private TransactionType parseType(JsonNode json) {
-        try {
-            return TransactionType.valueOf(json.get("type").asText());
-        } catch (Exception e) {
+    private TransactionType detectType(String normalizedMessage) {
+        boolean income = containsAny(normalizedMessage,
+                "nhan", "thu", "luong", "thuong", "hoan tien", "refund", "lai", "ban duoc", "co tuc");
+        boolean expense = containsAny(normalizedMessage,
+                "chi", "mua", "an", "uong", "tra tien", "thanh toan", "xang", "grab", "taxi", "bus", "cafe", "ca phe", "dong tien");
+
+        if (income && !expense) {
+            return TransactionType.INCOME;
+        }
+
+        if (expense) {
             return TransactionType.EXPENSE;
         }
+
+        return null;
     }
 
-    private BigDecimal parseAmount(JsonNode json) {
-        try {
-            return BigDecimal.valueOf(json.get("amount").asLong());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String parseDescription(JsonNode json, String fallback) {
-        return json.has("description")
-                ? json.get("description").asText()
-                : fallback;
-    }
-
-    private String parseCategory(JsonNode json) {
-        return json.has("category")
-                ? normalizeCategory(json.get("category").asText())
-                : "Khác";
-    }
-
-    // ================= NORMALIZE =================
-    private String normalizeCategory(String raw) {
-
-        raw = raw.toLowerCase();
-
-        if (raw.contains("ăn") || raw.contains("uống")) return "Ăn uống";
-
-        if (raw.contains("xăng")
-                || raw.contains("bus")
-                || raw.contains("xe buýt")
-                || raw.contains("taxi")
-                || raw.contains("grab")) return "Di chuyển";
-
-        if (raw.contains("giải trí")) return "Giải trí";
-
-        if (raw.contains("lương") || raw.contains("thu")) return "Thu nhập";
-
-        return "Khác";
-    }
-
-    // ================= FALLBACK =================
-    private String fallbackProcess(String message, String accountId) {
-
-        String msg = message.toLowerCase();
-
-        // 🔥 FIX: thêm xe buýt
-        boolean isExpense = msg.matches(".*(ăn|mua|uống|xăng|phí|xe buýt|bus|taxi|grab|xe).*");
-        boolean isIncome = msg.matches(".*(lương|thưởng|nhận|được).*");
-
-        if (!isExpense && !isIncome) return null;
-
-        BigDecimal amount = extractMoney(msg);
-        if (amount == null) return "😵 Không thấy tiền...";
-
-        TransactionType type = isExpense
-                ? TransactionType.EXPENSE
-                : TransactionType.INCOME;
-
-        String category = detectCategory(msg, isExpense);
-
-        return saveTransaction(accountId, type, amount, message, category);
-    }
-
-    private String detectCategory(String msg, boolean isExpense) {
-
-        if (msg.contains("ăn") || msg.contains("phở") || msg.contains("cơm"))
-            return "Ăn uống";
-
-        if (msg.contains("xăng")
-                || msg.contains("xe buýt")
-                || msg.contains("bus")
-                || msg.contains("taxi")
-                || msg.contains("grab"))
-            return "Di chuyển";
-
-        if (msg.contains("game") || msg.contains("netflix"))
-            return "Giải trí";
-
-        if (!isExpense)
+    private String detectCategory(String normalizedMessage, TransactionType type) {
+        if (type == TransactionType.INCOME) {
+            if (containsAny(normalizedMessage, "luong")) {
+                return "Lương";
+            }
+            if (containsAny(normalizedMessage, "thuong", "bonus")) {
+                return "Thưởng";
+            }
             return "Thu nhập";
+        }
+
+        if (containsAny(normalizedMessage, "an", "uong", "com", "pho", "bun", "tra sua", "cafe", "ca phe")) {
+            return "Ăn uống";
+        }
+        if (containsAny(normalizedMessage, "xang", "grab", "taxi", "bus", "xe", "di chuyen")) {
+            return "Di chuyển";
+        }
+        if (containsAny(normalizedMessage, "shop", "mua sam", "quan ao", "giay")) {
+            return "Mua sắm";
+        }
+        if (containsAny(normalizedMessage, "dien", "nuoc", "internet", "wifi", "hoa don")) {
+            return "Hóa đơn";
+        }
+        if (containsAny(normalizedMessage, "netflix", "spotify", "xem phim", "giai tri")) {
+            return "Giải trí";
+        }
+        if (containsAny(normalizedMessage, "vien phi", "thuoc", "kham", "suc khoe")) {
+            return "Sức khỏe";
+        }
+        if (containsAny(normalizedMessage, "hoc phi", "khoa hoc", "sach")) {
+            return "Giáo dục";
+        }
 
         return "Khác";
     }
 
-    // ================= MONEY =================
-    private BigDecimal extractMoney(String msg) {
+    private String normalizeCategory(String rawCategory, TransactionType type) {
+        String normalized = normalize(rawCategory);
+        return detectCategory(normalized, type);
+    }
+
+    private BigDecimal extractAmount(String message) {
+        Matcher matcher = MONEY_PATTERN.matcher(normalize(message));
+        while (matcher.find()) {
+            String rawNumber = matcher.group(1);
+            String unit = matcher.group(2);
+            BigDecimal amount = parseAmount(rawNumber, unit);
+            if (amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+                return amount;
+            }
+        }
+        return null;
+    }
+
+    private BigDecimal parseAmount(String rawNumber, String unit) {
         try {
-            String number = msg.replaceAll("[^0-9]", "");
-            if (number.isEmpty()) return null;
+            String compactNumber = rawNumber.replace(" ", "");
+            BigDecimal value;
 
-            BigDecimal value = new BigDecimal(number);
+            boolean hasDecimalWithUnit = unit != null
+                    && compactNumber.matches("\\d+[\\.,]\\d{1,2}");
 
-            if (msg.matches(".*\\d+k.*"))
-                value = value.multiply(BigDecimal.valueOf(1_000));
+            if (hasDecimalWithUnit) {
+                value = new BigDecimal(compactNumber.replace(',', '.'));
+            } else {
+                value = new BigDecimal(compactNumber.replaceAll("[^\\d]", ""));
+            }
 
-            else if (msg.matches(".*\\d+m.*"))
-                value = value.multiply(BigDecimal.valueOf(1_000_000));
+            long multiplier = switch (unit == null ? "" : unit.toLowerCase(Locale.ROOT)) {
+                case "k", "nghin", "ngan" -> 1_000L;
+                case "tr", "trieu", "m" -> 1_000_000L;
+                case "ty", "ti", "b" -> 1_000_000_000L;
+                default -> 1L;
+            };
 
-            else if (msg.matches(".*\\d+b.*"))
-                value = value.multiply(BigDecimal.valueOf(1_000_000_000));
-
-            return value;
-
+            return value.multiply(BigDecimal.valueOf(multiplier));
         } catch (Exception e) {
             return null;
         }
     }
 
-    // ================= PROMPT =================
-    private String buildPrompt(String input) {
-        return """
-Phân tích câu sau thành JSON.
+    private boolean looksLikeTransactionRequest(String normalizedMessage) {
+        boolean hasAmount = MONEY_PATTERN.matcher(normalizedMessage).find();
+        boolean explicitRecordCommand = containsAny(normalizedMessage, "ghi giao dich", "them giao dich", "luu giao dich", "ghi lai", "ghi");
+        boolean financeDomainQuestion = containsAny(normalizedMessage,
+                "ngan sach", "tiet kiem", "du doan", "phan tich", "tong quan", "so du", "lich su", "gan day", "bao nhieu", "xem");
 
-- isTransaction: true/false
-- type: INCOME hoặc EXPENSE
-- amount: số tiền (VND)
-- description: mô tả ngắn
-- category:
+        if (!hasAmount && !explicitRecordCommand) {
+            return false;
+        }
 
-+ "xe buýt", "bus", "taxi", "grab", "xăng" → "Di chuyển"
-+ ăn uống → "Thức ăn và Đồ uống"
-+ mua đồ → "Mua sắm"
-+ lương → "Lương"
+        if (financeDomainQuestion && !explicitRecordCommand && normalizedMessage.contains("?")) {
+            return false;
+        }
 
-Chỉ trả JSON.
-
-Câu: "%s"
-""".formatted(input);
+        return detectType(normalizedMessage) != null || explicitRecordCommand;
     }
 
-    // ================= RESPONSE =================
-    private String buildCuteResponse(TransactionType type, long amount, String desc) {
+    private boolean containsAny(String normalizedMessage, String... keywords) {
+        for (String keyword : keywords) {
+            if (Pattern.compile("(?<!\\p{Alnum})" + Pattern.quote(keyword) + "(?!\\p{Alnum})")
+                    .matcher(normalizedMessage)
+                    .find()) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        List<String> expense = List.of(
-                "💸 \"%s\" %dđ đã bay khỏi ví!",
-                "🍜 \"%s\" %dđ đã được ghi lại!",
-                "😆 \"%s\" %dđ nhé, tiêu vui nha!"
-        );
+    private String normalize(String input) {
+        if (input == null) {
+            return "";
+        }
 
-        List<String> income = List.of(
-                "💰 +%dđ từ \"%s\"!",
-                "🎉 \"%s\" +%dđ, giàu lên rồi!",
-                "🤑 nhận %dđ từ \"%s\"!"
-        );
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replace('đ', 'd');
 
-        Random rand = new Random();
+        return normalized.replaceAll("\\s+", " ").trim();
+    }
 
-        if (type == TransactionType.EXPENSE) {
-            return String.format(
-                    expense.get(rand.nextInt(expense.size())),
-                    desc, amount
-            );
-        } else {
-            return String.format(
-                    income.get(rand.nextInt(income.size())),
-                    amount, desc
-            );
+    private BigDecimal safe(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    private String formatCurrency(BigDecimal amount) {
+        return amount.setScale(0, RoundingMode.HALF_UP).toPlainString() + "đ";
+    }
+
+    private record ParsedTransaction(
+            boolean isTransaction,
+            boolean requiresAmount,
+            TransactionType type,
+            BigDecimal amount,
+            String categoryName
+    ) {
+        private static ParsedTransaction notTransaction() {
+            return new ParsedTransaction(false, false, null, null, null);
+        }
+
+        private static ParsedTransaction missingAmount() {
+            return new ParsedTransaction(true, true, null, null, null);
         }
     }
 }

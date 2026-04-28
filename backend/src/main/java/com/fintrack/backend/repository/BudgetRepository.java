@@ -8,4 +8,6 @@ import java.util.List;
 public interface BudgetRepository extends JpaRepository<Budget, String> {
 
     List<Budget> findByWallet_Id(String walletId);
+
+    List<Budget> findByWallet_Account_Id(String accountId);
 }

@@ -19,7 +19,7 @@ import {
   X
 } from "lucide-react";
 
-const BudgetPage = () => {
+const BudgetPage = ({ embedded = false }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("budget");
   const [budgets, setBudgets] = useState([]);
@@ -371,7 +371,7 @@ const BudgetPage = () => {
           )}
         </div>
 
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+        {!embedded && <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />}
 
         {/* Budget Modal */}
         <BudgetModal

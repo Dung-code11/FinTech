@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../context/WalletContext';
 import { useTransaction } from '../context/TransactionContext';
 import { useCategory } from '../context/CategoryContext';
-import BottomNav from '../components/layout/BottomNav';
 import AddTransactionModal from '../components/transactions/AddTransactionModal';
 import styles from '../css/TransactionsPage.module.css';
 import { 
@@ -32,8 +30,6 @@ import {
 } from 'lucide-react';
 
 const TransactionsPage = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('transactions');
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,8 +50,7 @@ const TransactionsPage = () => {
     max: ''
   });
 
-  const navigate = useNavigate();
-  const { wallets, loadWallets, updateWalletBalance } = useWallet();
+  const { wallets, loadWallets } = useWallet();
   const { 
     transactions, 
     loading, 
@@ -99,48 +94,91 @@ const TransactionsPage = () => {
   const calculateWalletBalances = () => {
     const balances = {};
     
-    wallets.forEach(w => {
-      if (w.type === 'CASH') {
-        balances[w.id] = w.initialBalance || 0;
-      } else {
-        balances[w.id] = (w.creditLimit || 0) - (w.unpaidBalance || 0);
+    wallets.forEach((wallet) => {
+      if (wallet.type === 'CREDIT') {
+        const creditLimit = wallet.creditLimit || 0;
+        const debt = wallet.unpaidBalance || 0;
+
+        balances[wallet.id] = {
+          type: 'CREDIT',
+          creditLimit,
+          debt,
+          available: Math.max(creditLimit - debt, 0),
+        };
+        return;
       }
+
+      balances[wallet.id] = {
+        type: 'CASH',
+        balance: wallet.initialBalance ?? wallet.balance ?? 0,
+      };
     });
 
-    transactions.forEach(t => {
-      if (t.type === 'INCOME' && balances[t.walletId] !== undefined) {
-        balances[t.walletId] += t.amount;
-      } else if (t.type === 'EXPENSE' && balances[t.walletId] !== undefined) {
-        balances[t.walletId] -= t.amount;
-      } else if (t.type === 'TRANSFER' && t.walletId && t.toWalletId) {
-        if (balances[t.walletId] !== undefined) {
-          balances[t.walletId] -= t.amount;
-        }
-        if (balances[t.toWalletId] !== undefined) {
-          balances[t.toWalletId] += t.amount;
-        }
+    const applyOutgoing = (walletId, amount) => {
+      const walletBalance = balances[walletId];
+      if (!walletBalance) return;
+
+      if (walletBalance.type === 'CREDIT') {
+        walletBalance.debt += amount;
+        walletBalance.available = Math.max(
+          walletBalance.creditLimit - walletBalance.debt,
+          0,
+        );
+      } else {
+        walletBalance.balance -= amount;
+      }
+    };
+
+    const applyIncoming = (walletId, amount) => {
+      const walletBalance = balances[walletId];
+      if (!walletBalance) return;
+
+      if (walletBalance.type === 'CREDIT') {
+        walletBalance.debt = Math.max(walletBalance.debt - amount, 0);
+        walletBalance.available = Math.max(
+          walletBalance.creditLimit - walletBalance.debt,
+          0,
+        );
+      } else {
+        walletBalance.balance += amount;
+      }
+    };
+
+    transactions.forEach((transaction) => {
+      const amount = transaction.amount || 0;
+
+      if (transaction.type === 'TRANSFER') {
+        applyOutgoing(transaction.walletId, amount);
+        applyIncoming(transaction.toWalletId, amount);
+        return;
+      }
+
+      if (transaction.type === 'INCOME') {
+        applyIncoming(transaction.walletId, amount);
+        return;
+      }
+
+      if (transaction.type === 'EXPENSE') {
+        applyOutgoing(transaction.walletId, amount);
       }
     });
 
     return balances;
   };
 
+  const walletBalances = calculateWalletBalances();
+
   // Lấy số dư hiện tại của ví được chọn
   const getCurrentWalletBalance = (walletId) => {
     if (walletId === 'all') return null;
     
-    const balances = calculateWalletBalances();
-    const wallet = wallets.find(w => w.id === walletId);
-    
-    if (!wallet) return 0;
-    
-    if (wallet.type === 'CASH') {
-      return balances[walletId] || 0;
-    } else {
-      const availableBalance = balances[walletId] || 0;
-      const creditLimit = wallet.creditLimit || 0;
-      return creditLimit - availableBalance;
-    }
+    const walletBalance = walletBalances[walletId];
+
+    if (!walletBalance) return 0;
+
+    return walletBalance.type === 'CREDIT'
+      ? walletBalance.debt || 0
+      : walletBalance.balance || 0;
   };
 
   // Format wallets cho dropdown với số dư động
@@ -156,7 +194,7 @@ const TransactionsPage = () => {
       const currentBalance = getCurrentWalletBalance(w.id);
       const balanceDisplay = w.type === 'CASH' 
         ? formatCompactAmount(currentBalance)
-        : formatCompactAmount(w.creditLimit - currentBalance) + ' (dư nợ)';
+        : formatCompactAmount(currentBalance) + ' (dư nợ)';
       
       return {
         id: w.id,
@@ -632,8 +670,6 @@ const TransactionsPage = () => {
             }}
           />
         )}
-
-        <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
       </main>
     </div>
   );

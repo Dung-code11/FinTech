@@ -10,18 +10,15 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Kiểm tra trạng thái đăng nhập khi khởi tạo
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = () => {
+  const checkAuthStatus = async () => {
     try {
       setInitialLoading(true);
-      const result = authService.getCurrentUser();
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
       
-      if (result.success) {
-        setUser(result.data);
+      if (token && userStr) {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
         setIsAuthenticated(true);
       } else {
         setUser(null);
@@ -33,6 +30,10 @@ export const AuthProvider = ({ children }) => {
       setInitialLoading(false);
     }
   };
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
 
   const login = async (credentials) => {
     try {
@@ -66,9 +67,11 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.register(userData);
       
       if (response.success) {
-        setUser(response.data);
-        setIsAuthenticated(true);
-        return { success: true, data: response.data };
+        return {
+          success: true,
+          data: response.data,
+          message: response.message
+        };
       } else {
         setError(response.error);
         return { success: false, error: response.error };
@@ -96,6 +99,30 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await authService.getProfile();
+
+      if (response.success) {
+        setUser(response.data);
+        setIsAuthenticated(true);
+        return { success: true, data: response.data };
+      }
+
+      setError(response.error);
+      return { success: false, error: response.error };
+    } catch (error) {
+      const errorMessage = error.message || 'Không thể đồng bộ hồ sơ';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const value = {
     user,
     loading,
@@ -105,7 +132,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    checkAuthStatus
+    checkAuthStatus,
+    refreshProfile
   };
 
   return (

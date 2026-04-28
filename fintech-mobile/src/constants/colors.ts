@@ -1,30 +1,23 @@
-// constants/colors.ts
+import { AppTheme } from './theme';
+
 export const Colors = {
-  primary: '#1976d2',
-  primaryLight: '#64b5f6',
-  primaryDark: '#1565c0',
-  primarySoft: '#e3f2fd',
-  
-  secondary: '#10b981',
-  secondaryLight: '#34d399',
-  secondaryDark: '#059669',
-  
-  danger: '#ef4444',
-  warning: '#f59e0b',
-  success: '#10b981',
-  info: '#3b82f6',
-  
-  gray50: '#f8fafc',
-  gray100: '#f1f5f9',
-  gray200: '#e2e8f0',
-  gray300: '#cbd5e1',
-  gray400: '#94a3b8',
-  gray500: '#64748b',
-  gray600: '#475569',
-  gray700: '#334155',
-  gray800: '#1e293b',
-  gray900: '#0f172a',
-  
-  background: '#ffffff',
-  surface: '#f8f9fa',
-};
+  ...AppTheme.colors,
+  primary: AppTheme.colors.accent,
+  primaryLight: AppTheme.colors.accentAlt,
+  primaryDark: AppTheme.colors.navy,
+  primarySoft: AppTheme.colors.accentSoft,
+  secondary: AppTheme.colors.gold,
+  secondaryLight: '#F59E0B',
+  secondaryDark: '#B45309',
+  gray50: '#F8FAFC',
+  gray100: '#EEF2F7',
+  gray200: '#D8E1EC',
+  gray300: '#C2CDD8',
+  gray400: '#97A5B6',
+  gray500: '#708092',
+  gray600: '#556275',
+  gray700: '#384659',
+  gray800: AppTheme.colors.ink,
+  gray900: '#0F172A',
+  info: '#0EA5E9',
+} as const;

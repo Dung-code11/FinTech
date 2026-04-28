@@ -14,63 +14,42 @@ export const WalletCard = ({ wallet, onClick, transactions = [] }) => {
     }).format(amount);
   };
 
-  // Tính số dư hiện tại dựa trên các giao dịch
-  const calculateCurrentBalance = () => {
+  // CÁCH 1: Lấy số dư trực tiếp từ wallet (ĐÃ ĐÚNG)
+  const getCurrentBalance = () => {
     if (!wallet) return 0;
     
-    console.log('Calculating balance for wallet:', wallet.id, wallet.name);
-    console.log('All transactions:', transactions);
+    if (wallet.type === 'CASH') {
+      // Số dư hiện tại đã được tính từ backend, không cần tính lại
+      return wallet.balance || 0;
+    } else {
+      // Với thẻ tín dụng, dùng unpaidBalance
+      return wallet.unpaidBalance || 0;
+    }
+  };
+
+  // CÁCH 2: Nếu muốn tính từ transactions, phải tính từ 0
+  const calculateBalanceFromTransactions = () => {
+    if (!wallet) return 0;
     
-    // Lọc các giao dịch thuộc ví này
-    const walletTransactions = transactions.filter(t => t.walletId === wallet.id);
-    console.log('Wallet transactions:', walletTransactions);
-    
-    // Tính tổng thu chi
+    // KHÔNG dùng wallet.balance hoặc wallet.initialBalance làm gốc
+    // Vì các transactions đã được tính vào số dư hiện tại rồi
     let balance = 0;
     
-    if (wallet.type === 'CASH') {
-      // Bắt đầu từ số dư ban đầu
-      balance = wallet.initialBalance || 0;
-      console.log('Initial balance:', balance);
-      
-      // Cộng/trừ theo từng giao dịch
-      walletTransactions.forEach(t => {
-        if (t.type === 'INCOME') {
-          balance += t.amount;
-          console.log(`+ Income ${t.amount}: new balance = ${balance}`);
-        } else if (t.type === 'EXPENSE') {
-          balance -= t.amount;
-          console.log(`- Expense ${t.amount}: new balance = ${balance}`);
-        }
-      });
-    } else {
-      // Với thẻ tín dụng, tính dư nợ
-      balance = wallet.unpaidBalance || 0;
-      console.log('Initial unpaid balance:', balance);
-      
-      walletTransactions.forEach(t => {
-        if (t.type === 'EXPENSE') {
-          balance += t.amount; // Chi tiêu làm tăng dư nợ
-          console.log(`+ Expense ${t.amount}: new unpaid = ${balance}`);
-        } else if (t.type === 'INCOME') {
-          balance -= t.amount; // Trả nợ làm giảm dư nợ
-          console.log(`- Income ${t.amount}: new unpaid = ${balance}`);
-        }
-      });
-    }
+    const walletTransactions = transactions.filter(t => t.walletId === wallet.id);
     
-    console.log('Final balance for wallet', wallet.name, ':', balance);
+    walletTransactions.forEach(t => {
+      if (t.type === 'INCOME') {
+        balance += t.amount;
+      } else if (t.type === 'EXPENSE') {
+        balance -= t.amount;
+      }
+    });
+    
     return balance;
   };
 
-  // Màu sắc theo loại ví
-  const getWalletColor = () => {
-    if (wallet?.type === 'CREDIT') return '#ef4444';
-    return '#1976d2';
-  };
-
-  const walletColor = getWalletColor();
-  const currentBalance = calculateCurrentBalance();
+  const currentBalance = getCurrentBalance(); // Dùng cách 1 (đúng)
+  // const currentBalance = calculateBalanceFromTransactions(); // Dùng cách 2 (nếu transactions là tất cả từ đầu)
 
   return (
     <div 
@@ -86,7 +65,7 @@ export const WalletCard = ({ wallet, onClick, transactions = [] }) => {
       </div>
       
       <div className={styles.walletCardContent}>
-        <div className={styles.walletIconLarge} style={{ backgroundColor: `${walletColor}20`, color: walletColor }}>
+        <div className={styles.walletIconLarge} style={{ backgroundColor: `${getWalletColor()}20`, color: getWalletColor() }}>
           {wallet?.type === 'CREDIT' ? <CreditCard size={32} /> : <Wallet size={32} />}
         </div>
         
@@ -124,6 +103,12 @@ export const WalletCard = ({ wallet, onClick, transactions = [] }) => {
   );
 };
 
+// Thêm hàm getWalletColor bên ngoài
+const getWalletColor = (wallet) => {
+  if (wallet?.type === 'CREDIT') return '#ef4444';
+  return '#1976d2';
+};
+
 // Card thêm ví mới
 export const AddWalletCard = ({ onClick }) => {
   return (
@@ -145,8 +130,7 @@ export const AddWalletCard = ({ onClick }) => {
 
 // Component bọc các card ví (dùng trong trang chủ)
 export const WalletGrid = ({ wallets = [], transactions = [], onAddWallet, onSelectWallet }) => {
-  console.log('WalletGrid - All wallets:', wallets);
-  console.log('WalletGrid - All transactions:', transactions);
+  console.log('WalletGrid - Rendering wallets:', wallets.length);
   
   return (
     <div className={styles.walletGrid}>

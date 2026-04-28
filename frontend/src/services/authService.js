@@ -142,30 +142,15 @@ export const authService = {
 
       console.log('Processed register response:', responseData);
 
-      // Giả sử response register cũng tương tự login
-      const newUserData = {
-        username: userData.username,
-        email: userData.email,
-        fullname: userData.fullname,
-        phone: userData.phone,
-        ...responseData
-      };
-      
-      // Lưu token nếu có
-      if (responseData.accessToken) {
-        localStorage.setItem('token', responseData.accessToken);
-      } else {
-        // Tạo token tạm nếu không có
-        const token = btoa(`${newUserData.email}-${Date.now()}`);
-        localStorage.setItem('token', token);
-      }
-      
-      localStorage.setItem('user', JSON.stringify(newUserData));
-      
       return {
         success: true,
-        data: newUserData,
-        message: responseData.message || 'Đăng ký thành công'
+        data: {
+          username: userData.username,
+          email: userData.email,
+          fullname: userData.fullname,
+          phone: userData.phone
+        },
+        message: responseData.message || responseText || 'Đăng ký thành công'
       };
     } catch (error) {
       console.error('Register error:', error);
@@ -236,7 +221,7 @@ export const authService = {
   },
 
   // ==================== ĐẶT LẠI MẬT KHẨU ====================
-  async resetPassword(email, newPassword) {
+  async resetPassword(email, otp, newPassword) {
     try {
       console.log('Resetting password for:', email);
 
@@ -245,6 +230,7 @@ export const authService = {
         headers: createHeaders(),
         body: JSON.stringify({ 
           email: email,
+          otp: otp,
           newPassword: newPassword 
         })
       });
@@ -292,6 +278,38 @@ export const authService = {
       return {
         success: true,
         message: 'Đã đăng xuất'
+      };
+    }
+  },
+
+  async getProfile() {
+    try {
+      const response = await fetch(API_ENDPOINTS.USER.PROFILE, {
+        method: 'GET',
+        headers: createHeaders(true)
+      });
+
+      const data = await handleResponse(response);
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const mergedUser = {
+        ...currentUser,
+        id: data.id,
+        userId: data.id,
+        username: data.username || currentUser.username,
+        role: data.role || currentUser.role
+      };
+
+      localStorage.setItem('user', JSON.stringify(mergedUser));
+
+      return {
+        success: true,
+        data: mergedUser
+      };
+    } catch (error) {
+      console.error('Get profile error:', error);
+      return {
+        success: false,
+        error: error.message || 'Không thể lấy hồ sơ người dùng'
       };
     }
   },

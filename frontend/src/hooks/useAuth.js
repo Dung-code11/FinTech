@@ -17,14 +17,15 @@ export const useAuth = () => {
     login,
     register,
     logout,
-    checkAuthStatus
+    checkAuthStatus,
+    refreshProfile
   } = context;
 
+  // Helper functions
   const getDisplayName = () => {
     if (user?.fullname) return user.fullname;
     if (user?.username) return user.username;
-    if (user?.email) return user.email;
-    if (user?.login) return user.login;
+    if (user?.email) return user.email.split('@')[0];
     return 'User';
   };
 
@@ -37,7 +38,7 @@ export const useAuth = () => {
   };
 
   const getUserId = () => {
-    return user?.userId || '';
+    return user?.userId || user?.id || '';
   };
 
   const getRole = () => {
@@ -45,7 +46,12 @@ export const useAuth = () => {
   };
 
   const isAdmin = () => {
-    return user?.role === 'ADMIN';
+    const role = user?.role?.toUpperCase();
+    return role === 'ADMIN' || role === 'ROLE_ADMIN';
+  };
+
+  const hasRole = (role) => {
+    return user?.role?.toUpperCase() === role.toUpperCase();
   };
 
   return {
@@ -61,6 +67,7 @@ export const useAuth = () => {
     register,
     logout,
     checkAuthStatus,
+    refreshProfile,
     
     // Helper functions
     getDisplayName,
@@ -68,6 +75,7 @@ export const useAuth = () => {
     getEmail,
     getUserId,
     getRole,
-    isAdmin
+    isAdmin,
+    hasRole
   };
 };

@@ -93,6 +93,12 @@ const AddTransactionModal = ({ isOpen, onClose, wallets, categories, transaction
         categoryId: '',
         createdAt: new Date().toISOString().split('T')[0]
       });
+      setErrors({});
+    } else {
+      setErrors(prev => ({
+        ...prev,
+        submit: result.error || 'Không thể lưu giao dịch'
+      }));
     }
   };
 
@@ -109,6 +115,10 @@ const AddTransactionModal = ({ isOpen, onClose, wallets, categories, transaction
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
+          {errors.submit && (
+            <div className={styles.errorMessage}>{errors.submit}</div>
+          )}
+
           {/* Transaction Type */}
           <div className={styles.typeSelector}>
             <button

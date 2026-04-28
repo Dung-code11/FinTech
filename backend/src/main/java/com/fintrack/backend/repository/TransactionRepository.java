@@ -13,18 +13,19 @@ import java.util.List;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, String> {
+
     @Query("""
     SELECT SUM(t.amount) FROM Transaction t
     WHERE t.type = 'EXPENSE'
     AND t.wallet.account.id = :accountId
-""")
+    """)
     BigDecimal sumExpense(@Param("accountId") String accountId);
 
     @Query("""
     SELECT AVG(t.amount) FROM Transaction t
     WHERE t.type = 'EXPENSE'
     AND t.wallet.account.id = :accountId
-""")
+    """)
     BigDecimal avgLast3MonthsExpense(@Param("accountId") String accountId);
 
     @Query("""
@@ -34,13 +35,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
     AND t.amount < 100000
     GROUP BY t.description
     HAVING COUNT(t) > 5
-""")
+    """)
     List<Object[]> findSmallFrequent(@Param("accountId") String accountId);
-    // Lấy theo walletId (đã có)
+
     List<Transaction> findByWallet_Id(String walletId);
 
-    // 🔥 Thêm cái bạn cần: lấy theo accountId thông qua Wallet
     List<Transaction> findByWallet_Account_Id(String accountId);
+
+    List<Transaction> findTop12ByWallet_Account_IdOrderByCreatedAtDesc(String accountId);
+
+    List<Transaction> findByWallet_Account_IdAndCreatedAtBetween(
+            String accountId,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 
     @Query("""
         SELECT COALESCE(SUM(t.amount), 0)
@@ -71,6 +79,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, String
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
     List<Transaction> findByWalletIdOrderByCreatedAtDesc(String walletId);
+
     List<Transaction> findByCategoryId(String categoryId);
 }

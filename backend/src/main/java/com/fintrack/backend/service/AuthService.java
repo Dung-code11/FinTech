@@ -50,7 +50,7 @@ public class AuthService {
         account.setUsername(request.username);
         account.setPassword(passwordEncoder.encode(request.password));
         account.setRole(Role.USER);
-
+        account.setIsActived(true);
         accountRepository.save(account);
 
         // Tạo thông tin user
@@ -73,7 +73,9 @@ public class AuthService {
         Account account = accountRepository
                 .findByLogin(request.login)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
+        if (!account.getIsActived()) {
+            throw new RuntimeException("Account has been locked");
+        }
         if (!passwordEncoder.matches(request.password, account.getPassword())) {
             throw new RuntimeException("Password incorrect");
         }
@@ -127,12 +129,25 @@ public class AuthService {
 
         if(!record.getOtpHash().equals(otpHash))
             throw new RuntimeException("Invalid OTP");
-
-        record.setUsed(true);
-
-        otpRepository.save(record);
     }
-    public void resetPassword(String email,String newPassword){
+
+    public void resetPassword(String email, String otp, String newPassword){
+
+        PasswordResetOtp record =
+                otpRepository
+                        .findTopByEmailOrderByCreatedAtDesc(email)
+                        .orElseThrow(() -> new RuntimeException("OTP not found"));
+
+        if(record.isUsed())
+            throw new RuntimeException("OTP already used");
+
+        if(record.getExpiryTime().isBefore(LocalDateTime.now()))
+            throw new RuntimeException("OTP expired");
+
+        String otpHash = HashUtil.sha256(otp);
+
+        if(!record.getOtpHash().equals(otpHash))
+            throw new RuntimeException("Invalid OTP");
 
         InfoUser infoUser = infoUserRepository
                 .findByEmail(email)
@@ -141,6 +156,17 @@ public class AuthService {
         Account account = infoUser.getAccount();
 
         account.setPassword(passwordEncoder.encode(newPassword));
+
+        accountRepository.save(account);
+
+        record.setUsed(true);
+        otpRepository.save(record);
+    }
+    public void toggleAccount(String accountId, boolean status) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        account.setIsActived(status);
 
         accountRepository.save(account);
     }

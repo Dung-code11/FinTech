@@ -1,7 +1,12 @@
 package com.fintrack.backend.service;
 
-import io.github.cdimascio.dotenv.Dotenv;
-import org.springframework.http.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -11,29 +16,32 @@ import java.util.Map;
 @Service
 public class GeminiService {
 
-    private final String API_KEY;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public GeminiService() {
-        Dotenv dotenv = Dotenv.load();
-        this.API_KEY = dotenv.get("GEMINI_API_KEY");
+    @Value("${gemini.api.key:}")
+    private String apiKey;
 
-        if (this.API_KEY == null || this.API_KEY.isEmpty()) {
-            throw new RuntimeException("❌ GEMINI_API_KEY not found in .env");
-        }
+    public boolean isAvailable() {
+        return apiKey != null && !apiKey.isBlank();
     }
-    public String callGemini(String prompt){
 
-        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + API_KEY;
+    public String callGemini(String prompt) {
+        return callGemini(prompt, "");
+    }
 
-        RestTemplate restTemplate = new RestTemplate();
+    public String callGemini(String prompt, String fallback) {
+        if (!isAvailable()) {
+            return fallback;
+        }
+
+        String url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey;
 
         Map<String, Object> body = Map.of(
                 "contents", List.of(
                         Map.of(
                                 "role", "user",
-                                "parts", List.of(
-                                        Map.of("text", prompt)
-                                )
+                                "parts", List.of(Map.of("text", prompt))
                         )
                 )
         );
@@ -42,22 +50,42 @@ public class GeminiService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         try {
-            HttpEntity<Map<String, Object>> request =
-                    new HttpEntity<>(body, headers);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<JsonNode> response = restTemplate.postForEntity(url, request, JsonNode.class);
 
-            ResponseEntity<Map> response =
-                    restTemplate.postForEntity(url, request, Map.class);
+            JsonNode root = response.getBody();
+            if (root == null) {
+                return fallback;
+            }
 
-            List candidates = (List) response.getBody().get("candidates");
-            Map first = (Map) candidates.get(0);
-            Map content = (Map) first.get("content");
-            List parts = (List) content.get("parts");
+            JsonNode textNode = root.path("candidates")
+                    .path(0)
+                    .path("content")
+                    .path("parts")
+                    .path(0)
+                    .path("text");
 
-            return (String) ((Map) parts.get(0)).get("text");
+            if (textNode.isMissingNode()) {
+                return fallback;
+            }
 
-        } catch (Exception e){
-            e.printStackTrace();
-            return "❌ Gemini error: " + e.getMessage();
+            String result = textNode.asText("").trim();
+            return result.isBlank() ? fallback : result;
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    public Map<String, Object> parseJsonObject(String responseText) {
+        try {
+            String cleaned = responseText
+                    .replace("```json", "")
+                    .replace("```", "")
+                    .trim();
+
+            return objectMapper.readValue(cleaned, Map.class);
+        } catch (Exception e) {
+            return Map.of();
         }
     }
 }
