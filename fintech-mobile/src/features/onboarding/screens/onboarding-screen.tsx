@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   skipText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.bold,
   },
   content: {
     flex: 1,
@@ -171,12 +171,13 @@ const styles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 31,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     lineHeight: 38,
   },
   description: {
     color: 'rgba(255,255,255,0.84)',
     fontSize: 15,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 24,
   },
   footer: {

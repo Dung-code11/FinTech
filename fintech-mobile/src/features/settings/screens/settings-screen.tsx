@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
 import { SectionCard } from '@/components/ui/section-card';
 import { AppTheme } from '@/constants/theme';
@@ -115,12 +116,10 @@ export default function SettingsScreen() {
 
   return (
     <Screen contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Cài đặt</Text>
-        <Text style={styles.subtitle}>
-          Session, tuỳ chọn giao diện và các hành động hỗ trợ đều được gom về một chỗ.
-        </Text>
-      </View>
+      <PageHeader
+        subtitle="Session, tuỳ chọn giao diện và các hành động hỗ trợ đều được gom về một chỗ."
+        title="Cài đặt"
+      />
 
       {user ? (
         <SectionCard
@@ -282,20 +281,8 @@ const styles = StyleSheet.create({
   loaderText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 14,
+    fontFamily: AppTheme.fonts.regular,
     marginTop: 14,
-  },
-  header: {
-    gap: 6,
-  },
-  title: {
-    color: AppTheme.colors.ink,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 14,
-    lineHeight: 22,
   },
   profileRow: {
     alignItems: 'center',
@@ -313,7 +300,7 @@ const styles = StyleSheet.create({
   profileBadgeText: {
     color: AppTheme.colors.accent,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   profileCopy: {
     flex: 1,
@@ -322,11 +309,12 @@ const styles = StyleSheet.create({
   profileName: {
     color: AppTheme.colors.ink,
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   profileMeta: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
   },
   linkButton: {
     alignSelf: 'flex-start',
@@ -335,7 +323,7 @@ const styles = StyleSheet.create({
   linkButtonText: {
     color: AppTheme.colors.accent,
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   settingRow: {
     alignItems: 'center',
@@ -358,11 +346,12 @@ const styles = StyleSheet.create({
   settingLabel: {
     color: AppTheme.colors.ink,
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   settingDescription: {
     color: AppTheme.colors.inkSoft,
     fontSize: 12,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 18,
   },
   logoutButton: {
@@ -377,6 +366,6 @@ const styles = StyleSheet.create({
   logoutText: {
     color: AppTheme.colors.danger,
     fontSize: 15,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
 });

@@ -9,6 +9,7 @@ import {
 
 import { WalletCard } from '@/components/finance/wallet-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { SectionCard } from '@/components/ui/section-card';
@@ -95,12 +96,10 @@ export default function WalletsScreen() {
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />,
       }}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Ví và tài sản</Text>
-        <Text style={styles.subtitle}>
-          Mỗi ví hiển thị theo đúng bản chất: tiền mặt là số dư, thẻ tín dụng là hạn mức và dư nợ.
-        </Text>
-      </View>
+      <PageHeader
+        subtitle="Mỗi ví hiển thị theo đúng bản chất: tiền mặt là số dư, thẻ tín dụng là hạn mức và dư nợ."
+        title="Ví và tài sản"
+      />
 
       <SectionCard
         eyebrow="Portfolio"
@@ -174,19 +173,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 14,
   },
-  header: {
-    gap: 6,
-  },
-  title: {
-    color: AppTheme.colors.ink,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 14,
-    lineHeight: 22,
-  },
   statLine: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -195,12 +181,12 @@ const styles = StyleSheet.create({
   statLabel: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   statValue: {
     color: AppTheme.colors.ink,
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   progressBlock: {
     flexDirection: 'row',
@@ -211,12 +197,12 @@ const styles = StyleSheet.create({
   progressLabel: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   progressValue: {
     color: AppTheme.colors.ink,
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   walletColumn: {
     gap: 14,
@@ -237,6 +223,6 @@ const styles = StyleSheet.create({
   metaChipText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
 });

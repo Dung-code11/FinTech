@@ -1,4 +1,10 @@
-import { Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
@@ -10,8 +16,10 @@ import { SessionProvider } from '@/providers/session-provider';
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
+    Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Inter_800ExtraBold,
   });
 
   if (!fontsLoaded) {

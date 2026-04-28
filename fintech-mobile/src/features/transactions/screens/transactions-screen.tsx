@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -6,13 +5,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
 import { TransactionRow } from '@/components/finance/transaction-row';
+import { Chip } from '@/components/ui/chip';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
+import { SearchField } from '@/components/ui/search-field';
 import { Screen } from '@/components/ui/screen';
 import { SectionCard } from '@/components/ui/section-card';
 import { AppTheme } from '@/constants/theme';
@@ -22,22 +22,6 @@ import type { Transaction, Wallet } from '@/types/finance';
 import { formatCurrency, groupTransactionsByDay } from '@/utils/format';
 
 type TransactionFilter = 'ALL' | 'INCOME' | 'EXPENSE' | 'TRANSFER';
-
-function FilterChip({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} style={[styles.filterChip, active && styles.filterChipActive]}>
-      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 export default function TransactionsScreen() {
   const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -120,12 +104,10 @@ export default function TransactionsScreen() {
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />,
       }}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Giao dịch</Text>
-        <Text style={styles.subtitle}>
-          Lọc theo loại, ví và từ khoá để đọc lại lịch sử chi tiêu nhanh hơn.
-        </Text>
-      </View>
+      <PageHeader
+        subtitle="Lọc theo loại, ví và từ khoá để đọc lại lịch sử chi tiêu nhanh hơn."
+        title="Giao dịch"
+      />
 
       <SectionCard
         eyebrow="Overview"
@@ -152,36 +134,26 @@ export default function TransactionsScreen() {
         </View>
       </SectionCard>
 
-      <View style={styles.searchWrap}>
-        <Ionicons color={AppTheme.colors.muted} name="search-outline" size={18} />
-        <TextInput
-          onChangeText={setQuery}
-          placeholder="Tìm theo danh mục hoặc mô tả"
-          placeholderTextColor={AppTheme.colors.muted}
-          style={styles.searchInput}
-          value={query}
-        />
-        {query ? (
-          <TouchableOpacity onPress={() => setQuery('')}>
-            <Ionicons color={AppTheme.colors.muted} name="close-circle" size={18} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
+      <SearchField
+        onChangeText={setQuery}
+        placeholder="Tìm theo danh mục hoặc mô tả"
+        value={query}
+      />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.filterRow}>
-          <FilterChip active={activeType === 'ALL'} label="Tất cả" onPress={() => setActiveType('ALL')} />
-          <FilterChip active={activeType === 'INCOME'} label="Thu nhập" onPress={() => setActiveType('INCOME')} />
-          <FilterChip active={activeType === 'EXPENSE'} label="Chi tiêu" onPress={() => setActiveType('EXPENSE')} />
-          <FilterChip active={activeType === 'TRANSFER'} label="Chuyển ví" onPress={() => setActiveType('TRANSFER')} />
+          <Chip active={activeType === 'ALL'} label="Tất cả" onPress={() => setActiveType('ALL')} />
+          <Chip active={activeType === 'INCOME'} label="Thu nhập" onPress={() => setActiveType('INCOME')} />
+          <Chip active={activeType === 'EXPENSE'} label="Chi tiêu" onPress={() => setActiveType('EXPENSE')} />
+          <Chip active={activeType === 'TRANSFER'} label="Chuyển ví" onPress={() => setActiveType('TRANSFER')} />
         </View>
       </ScrollView>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.filterRow}>
-          <FilterChip active={activeWalletId === 'ALL'} label="Mọi ví" onPress={() => setActiveWalletId('ALL')} />
+          <Chip active={activeWalletId === 'ALL'} label="Mọi ví" onPress={() => setActiveWalletId('ALL')} />
           {wallets.map((wallet) => (
-            <FilterChip
+            <Chip
               key={wallet.id}
               active={activeWalletId === wallet.id}
               label={wallet.name}
@@ -241,20 +213,8 @@ const styles = StyleSheet.create({
   loaderText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 14,
+    fontFamily: AppTheme.fonts.regular,
     marginTop: 14,
-  },
-  header: {
-    gap: 6,
-  },
-  title: {
-    color: AppTheme.colors.ink,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 14,
-    lineHeight: 22,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -267,52 +227,17 @@ const styles = StyleSheet.create({
   summaryLabel: {
     color: AppTheme.colors.muted,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   summaryValue: {
     color: AppTheme.colors.ink,
     fontSize: 16,
-    fontWeight: '800',
-  },
-  searchWrap: {
-    alignItems: 'center',
-    backgroundColor: AppTheme.colors.surface,
-    borderColor: AppTheme.colors.line,
-    borderRadius: AppTheme.radii.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-  },
-  searchInput: {
-    color: AppTheme.colors.ink,
-    flex: 1,
-    fontSize: 14,
-    minHeight: 54,
+    fontFamily: AppTheme.fonts.extrabold,
   },
   filterRow: {
     flexDirection: 'row',
     gap: 10,
     paddingRight: 20,
-  },
-  filterChip: {
-    backgroundColor: AppTheme.colors.surfaceMuted,
-    borderRadius: AppTheme.radii.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-  },
-  filterChipActive: {
-    backgroundColor: AppTheme.colors.accentSoft,
-    borderColor: AppTheme.colors.accent,
-    borderWidth: 1,
-  },
-  filterChipText: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  filterChipTextActive: {
-    color: AppTheme.colors.accent,
   },
   transactionList: {
     gap: 2,

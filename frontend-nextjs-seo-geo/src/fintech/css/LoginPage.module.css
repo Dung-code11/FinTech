@@ -1,0 +1,401 @@
+.loginPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-main) 100%);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.loginPage::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
+  animation: rotate 30s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loginCard {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 32px;
+  box-shadow: var(--shadow-lg);
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 460px;
+  animation: slideUp 0.6s ease-out;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loginHeader {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.logoWrapper {
+  margin-bottom: 24px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(33, 150, 243, 0.3));
+}
+
+.loginHeader h1 {
+  color: var(--primary-dark);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-main));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  color: var(--gray-500);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.successMessage {
+  background: rgba(76, 175, 80, 0.12);
+  color: var(--success);
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  border: 1px solid rgba(76, 175, 80, 0.22);
+}
+
+.errorMessage {
+  background: rgba(244, 67, 54, 0.1);
+  color: var(--error);
+  padding: 12px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.eyeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-400);
+  transition: color 0.3s ease;
+}
+
+.eyeButton:hover {
+  color: var(--primary-main);
+}
+
+.forgotPassword {
+  text-align: right;
+  margin-top: -8px;
+}
+
+.forgotPassword a {
+  color: var(--primary-main);
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.forgotPassword a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: var(--primary-main);
+  transition: width 0.3s ease;
+}
+
+.forgotPassword a:hover::after {
+  width: 100%;
+}
+
+.loginFooter {
+  text-align: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--gray-200);
+}
+
+.loginFooter p {
+  color: var(--gray-500);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.registerLink {
+  color: var(--primary-main);
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+  position: relative;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.registerLink:hover {
+  gap: 8px;
+  background: rgba(33, 150, 243, 0.2);
+  transform: translateY(-2px);
+}
+
+.registerArrow {
+  transition: transform 0.3s ease;
+}
+
+.registerLink:hover .registerArrow {
+  transform: translateX(4px);
+}
+
+.socialLogin {
+  margin-top: 32px;
+}
+
+.divider {
+  position: relative;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 70px);
+  height: 1px;
+  background: var(--gray-200);
+}
+
+.divider::before {
+  left: 0;
+}
+
+.divider::after {
+  right: 0;
+}
+
+.divider span {
+  background: white;
+  padding: 0 16px;
+  color: var(--gray-400);
+  font-size: 0.9rem;
+}
+
+.socialButtons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.socialBtn {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: white;
+  border: 1px solid var(--gray-200);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.socialBtn:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.socialBtn.google:hover {
+  border-color: #DB4437;
+}
+
+.socialBtn.facebook:hover {
+  border-color: #1877f2;
+}
+
+.socialBtn.github:hover {
+  border-color: #333;
+}
+
+.terms {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.terms p {
+  color: var(--gray-400);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.terms a {
+  color: var(--primary-main);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.terms a:hover {
+  color: var(--primary-dark);
+  text-decoration: underline;
+}
+/* Thêm vào cuối file LoginPage.module.css */
+.errorMessage {
+  background: #fee;
+  color: #d32f2f;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  border: 1px solid #fcc;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.errorContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.debugToggle {
+  background: none;
+  border: 1px solid #d32f2f;
+  color: #d32f2f;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.debugToggle:hover {
+  background: #d32f2f;
+  color: white;
+}
+
+.debugInfo {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  border: 1px solid #ddd;
+}
+
+.debugInfo pre {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 10px 0;
+  font-size: 0.85rem;
+  border: 1px solid #eee;
+}
+
+.debugHelp {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.debugHelp ul {
+  margin: 8px 0 0 20px;
+  color: #666;
+}
+
+.debugHelp li {
+  margin: 4px 0;
+}
+@media (max-width: 480px) {
+  .loginCard {
+    padding: 32px 24px;
+  }
+
+  .loginHeader h1 {
+    font-size: 1.75rem;
+  }
+
+  .socialBtn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .loginFooter p {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

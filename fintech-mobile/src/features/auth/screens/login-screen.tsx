@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     color: AppTheme.colors.accent,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.bold,
     marginTop: -4,
   },
   noteBlock: {
@@ -121,11 +121,12 @@ const styles = StyleSheet.create({
   noteTitle: {
     color: AppTheme.colors.ink,
     fontSize: 13,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   noteText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 20,
   },
   footerRow: {
@@ -136,10 +137,11 @@ const styles = StyleSheet.create({
   footerText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 14,
+    fontFamily: AppTheme.fonts.regular,
   },
   footerLink: {
     color: AppTheme.colors.accent,
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
 });

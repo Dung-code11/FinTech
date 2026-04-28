@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { isAxiosError } from 'axios';
 import {
   createContext,
   type ReactNode,
@@ -26,7 +26,7 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 function isUnauthorized(error: unknown) {
-  return axios.isAxiosError(error) && error.response?.status === 401;
+  return isAxiosError(error) && error.response?.status === 401;
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {

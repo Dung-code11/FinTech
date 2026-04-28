@@ -57,18 +57,19 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: AppTheme.colors.accent,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.bold,
     letterSpacing: 0.7,
     textTransform: 'uppercase',
   },
   title: {
     color: AppTheme.colors.ink,
     fontSize: 18,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   subtitle: {
     color: AppTheme.colors.muted,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 19,
   },
 });

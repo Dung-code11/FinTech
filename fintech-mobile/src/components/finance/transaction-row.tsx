@@ -94,11 +94,12 @@ const styles = StyleSheet.create({
   title: {
     color: AppTheme.colors.ink,
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   description: {
     color: AppTheme.colors.muted,
     fontSize: 12,
+    fontFamily: AppTheme.fonts.regular,
   },
   amountWrap: {
     alignItems: 'flex-end',
@@ -106,10 +107,11 @@ const styles = StyleSheet.create({
   },
   amount: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.bold,
   },
   date: {
     color: AppTheme.colors.muted,
     fontSize: 11,
+    fontFamily: AppTheme.fonts.regular,
   },
 });

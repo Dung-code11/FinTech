@@ -1,0 +1,65 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: fintech-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-fintech}
+      MYSQL_USER: ${MYSQL_USER:-fintech}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-fintech}
+    ports:
+      - "${MYSQL_PORT:-3308}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    container_name: fintech-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+      SQL_URL: ${SQL_URL:-jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-fintech}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+      SQL_USERNAME: ${SQL_USERNAME:-root}
+      SQL_PASSWORD: ${SQL_PASSWORD:-${MYSQL_ROOT_PASSWORD:-root}}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    container_name: fintech-nextjs
+    build:
+      context: ./frontend-nextjs-seo-geo
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+

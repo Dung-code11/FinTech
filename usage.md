@@ -2,10 +2,11 @@
 
 ## 1. Mục tiêu repo
 
-Repo này gồm 3 ứng dụng chính:
+Repo này gồm 4 ứng dụng chính:
 
 - `backend`: Spring Boot API cho xác thực, ví, giao dịch, ngân sách, nợ, tiết kiệm, AI và admin.
 - `frontend`: web app React/Vite cho dashboard desktop/web.
+- `frontend-nextjs-seo-geo`: web app Next.js (App Router) cho landing page tối ưu SEO/GEO (metadata, sitemap/robots, JSON-LD, pages theo địa điểm).
 - `fintech-mobile`: mobile app Expo/React Native cho trải nghiệm di động.
 
 Luồng chung:
@@ -36,6 +37,14 @@ npm install
 npm run dev
 ```
 
+### Frontend Next.js SEO/GEO (mới)
+
+```bash
+cd frontend-nextjs-seo-geo
+npm install
+npm run dev
+```
+
 ### Fintech mobile
 
 ```bash
@@ -57,6 +66,7 @@ Lưu ý mobile:
 | `.github/` | Hook/phần hỗ trợ nội bộ liên quan java-upgrade. Không phải logic sản phẩm. |
 | `backend/` | API Spring Boot. |
 | `frontend/` | Web app React/Vite. |
+| `frontend-nextjs-seo-geo/` | Web app Next.js tối ưu SEO/GEO (landing pages). |
 | `fintech-mobile/` | Mobile app Expo/React Native. |
 | `usage.md` | Tài liệu này. |
 
