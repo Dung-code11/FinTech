@@ -1,0 +1,57 @@
+name: fintech
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: fintech
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      TZ: Asia/Bangkok
+    ports:
+      - "${MYSQL_PORT:-3308}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SQL_URL: jdbc:mysql://db:3306/fintech?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SQL_USERNAME: root
+      SQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./fintech-mobile
+      args:
+        EXPO_API_URL_WEB: ${EXPO_API_URL_WEB:-http://localhost:8080/api}
+        EXPO_API_URL_ANDROID: ${EXPO_API_URL_ANDROID:-http://10.0.2.2:8080/api}
+        EXPO_API_URL_IOS: ${EXPO_API_URL_IOS:-http://localhost:8080/api}
+        EXPO_API_URL_DEVICE: ${EXPO_API_URL_DEVICE:-http://192.168.19.159:8080/api}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  mysql_data:
+

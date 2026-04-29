@@ -12,6 +12,7 @@ import {
 import { TransactionRow } from '@/components/finance/transaction-row';
 import { WalletCard } from '@/components/finance/wallet-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader } from '@/components/ui/page-header';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { SectionCard } from '@/components/ui/section-card';
@@ -157,18 +158,16 @@ export default function HomeScreen() {
         refreshControl: <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />,
       }}
     >
-      <View style={styles.header}>
-        <View style={styles.headerCopy}>
-          <Text style={styles.eyebrow}>FinTrack mobile</Text>
-          <Text style={styles.headerTitle}>Xin chào, {user?.username ?? 'bạn'}</Text>
-          <Text style={styles.headerSubtitle}>
-            Một màn hình để nhìn ví, kỷ luật chi tiêu và các khoản đang kéo dòng tiền đi xuống.
-          </Text>
-        </View>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(user?.username)}</Text>
-        </View>
-      </View>
+      <PageHeader
+        eyebrow="FinTrack mobile"
+        subtitle="Một màn hình để nhìn ví, kỷ luật chi tiêu và các khoản đang kéo dòng tiền đi xuống."
+        title={`Xin chào, ${user?.username ?? 'bạn'}`}
+        right={
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials(user?.username)}</Text>
+          </View>
+        }
+      />
 
       <LinearGradient colors={AppTheme.gradients.hero} style={styles.heroCard}>
         <Text style={styles.heroLabel}>Vốn khả dụng</Text>
@@ -310,35 +309,8 @@ const styles = StyleSheet.create({
   loaderText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 14,
+    fontFamily: AppTheme.fonts.regular,
     marginTop: 14,
-  },
-  header: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 14,
-    justifyContent: 'space-between',
-  },
-  headerCopy: {
-    flex: 1,
-    gap: 6,
-  },
-  eyebrow: {
-    color: AppTheme.colors.accent,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
-  headerTitle: {
-    color: AppTheme.colors.ink,
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 36,
-  },
-  headerSubtitle: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 14,
-    lineHeight: 22,
   },
   avatar: {
     alignItems: 'center',
@@ -353,7 +325,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: AppTheme.colors.ink,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   heroCard: {
     borderRadius: AppTheme.radii.xl,
@@ -362,14 +334,14 @@ const styles = StyleSheet.create({
   heroLabel: {
     color: 'rgba(255,255,255,0.76)',
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   heroValue: {
     color: '#FFFFFF',
     fontSize: 34,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     marginBottom: 22,
   },
   heroSplit: {
@@ -384,12 +356,12 @@ const styles = StyleSheet.create({
   heroSplitLabel: {
     color: 'rgba(255,255,255,0.72)',
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: AppTheme.fonts.medium,
   },
   heroSplitValue: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   heroDivider: {
     backgroundColor: 'rgba(255,255,255,0.16)',
@@ -414,19 +386,20 @@ const styles = StyleSheet.create({
   metricLabel: {
     color: AppTheme.colors.muted,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
     marginBottom: 12,
     textTransform: 'uppercase',
   },
   metricValue: {
     color: AppTheme.colors.ink,
     fontSize: 20,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     marginBottom: 8,
   },
   metricHelper: {
     color: AppTheme.colors.inkSoft,
     fontSize: 12,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 18,
   },
   sectionHeader: {
@@ -436,11 +409,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: AppTheme.colors.ink,
     fontSize: 21,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   sectionCaption: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 20,
   },
   walletRow: {
@@ -458,12 +432,12 @@ const styles = StyleSheet.create({
   insightLabel: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   insightValue: {
     color: AppTheme.colors.ink,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   insightBar: {
     marginTop: 2,

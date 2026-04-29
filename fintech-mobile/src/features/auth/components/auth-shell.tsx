@@ -69,19 +69,20 @@ const styles = StyleSheet.create({
   badgeText: {
     color: AppTheme.colors.accent,
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   title: {
     color: AppTheme.colors.ink,
     fontSize: 32,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     lineHeight: 38,
   },
   subtitle: {
     color: AppTheme.colors.inkSoft,
     fontSize: 15,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 23,
   },
   formCard: {

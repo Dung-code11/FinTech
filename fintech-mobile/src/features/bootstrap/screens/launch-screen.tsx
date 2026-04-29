@@ -59,18 +59,19 @@ const styles = StyleSheet.create({
   logoText: {
     color: '#FFFFFF',
     fontSize: 32,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     letterSpacing: 1.5,
   },
   title: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     marginBottom: 10,
   },
   subtitle: {
     color: 'rgba(255,255,255,0.84)',
     fontSize: 14,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 22,
     textAlign: 'center',
   },

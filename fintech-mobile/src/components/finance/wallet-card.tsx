@@ -68,23 +68,24 @@ const styles = StyleSheet.create({
   },
   typePill: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.bold,
   },
   name: {
     color: AppTheme.colors.ink,
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     marginBottom: 8,
   },
   balance: {
     color: AppTheme.colors.ink,
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     marginBottom: 6,
   },
   subtitle: {
     color: AppTheme.colors.muted,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 19,
   },
   footer: {
@@ -98,6 +99,6 @@ const styles = StyleSheet.create({
   footerLabel: {
     color: AppTheme.colors.muted,
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: AppTheme.fonts.medium,
   },
 });

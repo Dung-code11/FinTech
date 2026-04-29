@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import {
@@ -63,7 +63,7 @@ api.interceptors.response.use(
 );
 
 export function extractApiError(error: unknown) {
-  if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
     return (
       (typeof error.response?.data === 'string' && error.response.data) ||
       error.response?.data?.message ||

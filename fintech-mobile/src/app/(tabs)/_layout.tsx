@@ -20,7 +20,7 @@ export default function TabsLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '700',
+          fontFamily: AppTheme.fonts.bold,
           marginBottom: Platform.OS === 'ios' ? 0 : 8,
         },
         tabBarStyle: {
@@ -35,6 +35,7 @@ export default function TabsLayout() {
           paddingTop: 8,
           position: 'absolute',
           right: 16,
+          ...AppTheme.shadow.soft,
         },
       }}>
       <Tabs.Screen

@@ -1,0 +1,14 @@
+node_modules
+.expo
+dist
+web-build
+.cache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
+.DS_Store
+android/.gradle
+android/app/build
+

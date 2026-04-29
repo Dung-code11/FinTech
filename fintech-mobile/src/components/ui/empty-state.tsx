@@ -48,12 +48,13 @@ const styles = StyleSheet.create({
   title: {
     color: AppTheme.colors.ink,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
     marginBottom: 4,
   },
   message: {
     color: AppTheme.colors.muted,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 20,
     textAlign: 'center',
   },

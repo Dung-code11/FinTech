@@ -3,9 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
   type ReactNode,
 } from 'react-native';
@@ -51,16 +51,20 @@ export function PrimaryButton({
   );
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.92}
+    <Pressable
       disabled={disabled || loading}
       onPress={onPress}
-      style={[
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      style={({ pressed }) => [
         styles.button,
         variant === 'secondary' && styles.secondaryButton,
         variant === 'ghost' && styles.ghostButton,
         (disabled || loading) && styles.disabled,
-      ]}>
+        pressed && !(disabled || loading) && styles.pressed,
+      ]}
+    >
       {isPrimary ? (
         <LinearGradient colors={AppTheme.gradients.action} style={styles.gradient}>
           {content}
@@ -68,7 +72,7 @@ export function PrimaryButton({
       ) : (
         content
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -76,6 +80,10 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: AppTheme.radii.pill,
     overflow: 'hidden',
+  },
+  pressed: {
+    transform: [{ scale: 0.99 }],
+    opacity: 0.96,
   },
   gradient: {
     minHeight: 56,
@@ -94,7 +102,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.bold,
   },
   secondaryButton: {
     backgroundColor: AppTheme.colors.surface,

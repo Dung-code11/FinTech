@@ -10,11 +10,32 @@ public class DotenvConfig {
                 .ignoreIfMissing()
                 .load();
 
-        System.setProperty("SQL_URL", dotenv.get("SQL_URL"));
-        System.setProperty("SQL_USERNAME", dotenv.get("SQL_USERNAME"));
-        System.setProperty("SQL_PASSWORD", dotenv.get("SQL_PASSWORD"));
-        System.setProperty("JWT_SECRET_KEY", dotenv.get("JWT_SECRET_KEY"));
-        System.setProperty("MAIL_USERNAME", dotenv.get("MAIL_USERNAME"));
-        System.setProperty("MAIL_PASSWORD", dotenv.get("MAIL_PASSWORD"));
+        setPropertyIfMissing("SQL_URL", dotenv);
+        setPropertyIfMissing("SQL_USERNAME", dotenv);
+        setPropertyIfMissing("SQL_PASSWORD", dotenv);
+        setPropertyIfMissing("JWT_SECRET_KEY", dotenv);
+        setPropertyIfMissing("MAIL_USERNAME", dotenv);
+        setPropertyIfMissing("MAIL_PASSWORD", dotenv);
+        setPropertyIfMissing("GEMINI_API_KEY", dotenv);
+        setPropertyIfMissing("SERVER_ADDRESS", dotenv);
+        setPropertyIfMissing("SERVER_PORT", dotenv);
+    }
+
+    private static void setPropertyIfMissing(String key, Dotenv dotenv) {
+        String current = System.getProperty(key);
+        if (current != null && !current.isBlank()) {
+            return;
+        }
+
+        String env = System.getenv(key);
+        if (env != null && !env.isBlank()) {
+            System.setProperty(key, env);
+            return;
+        }
+
+        String value = dotenv.get(key, null);
+        if (value != null && !value.isBlank()) {
+            System.setProperty(key, value);
+        }
     }
 }

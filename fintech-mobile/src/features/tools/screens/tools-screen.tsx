@@ -9,27 +9,13 @@ import {
   View,
 } from 'react-native';
 
+import { Chip } from '@/components/ui/chip';
+import { PageHeader } from '@/components/ui/page-header';
 import { Screen } from '@/components/ui/screen';
 import { SectionCard } from '@/components/ui/section-card';
 import { AppTheme } from '@/constants/theme';
 import { convertCurrency, currencyRates, financePrompts } from '@/services/tools-service';
 import { formatCurrency } from '@/utils/format';
-
-function CurrencyChip({
-  active,
-  label,
-  onPress,
-}: {
-  active: boolean;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity onPress={onPress} style={[styles.currencyChip, active && styles.currencyChipActive]}>
-      <Text style={[styles.currencyChipText, active && styles.currencyChipTextActive]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 export default function ToolsScreen() {
   const [amount, setAmount] = useState('1000000');
@@ -42,12 +28,10 @@ export default function ToolsScreen() {
 
   return (
     <Screen contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Công cụ & insight</Text>
-        <Text style={styles.subtitle}>
-          Khu vực hỗ trợ quyết định nhanh trên mobile. Tỷ giá sẽ hiển thị khi ứng dụng được kết nối nguồn dữ liệu thật.
-        </Text>
-      </View>
+      <PageHeader
+        subtitle="Khu vực hỗ trợ quyết định nhanh trên mobile. Tỷ giá sẽ hiển thị khi ứng dụng được kết nối nguồn dữ liệu thật."
+        title="Công cụ & insight"
+      />
 
       <SectionCard
         eyebrow="Converter"
@@ -72,7 +56,7 @@ export default function ToolsScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipRow}>
                 {currencyRates.map((rate) => (
-                  <CurrencyChip
+                  <Chip
                     key={`from-${rate.code}`}
                     active={fromCode === rate.code}
                     label={rate.code}
@@ -95,7 +79,7 @@ export default function ToolsScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipRow}>
                 {currencyRates.map((rate) => (
-                  <CurrencyChip
+                  <Chip
                     key={`to-${rate.code}`}
                     active={toCode === rate.code}
                     label={rate.code}
@@ -183,65 +167,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
-  header: {
-    gap: 6,
-  },
-  title: {
-    color: AppTheme.colors.ink,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  subtitle: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 14,
-    lineHeight: 22,
-  },
   converterBlock: {
     gap: 8,
   },
   converterLabel: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   amountInput: {
     backgroundColor: AppTheme.colors.surfaceMuted,
     borderRadius: AppTheme.radii.lg,
     color: AppTheme.colors.ink,
     fontSize: 30,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
     minHeight: 72,
     paddingHorizontal: 18,
   },
   selectorLabel: {
     color: AppTheme.colors.ink,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
     marginTop: 4,
   },
   chipRow: {
     flexDirection: 'row',
     gap: 10,
     paddingRight: 20,
-  },
-  currencyChip: {
-    backgroundColor: AppTheme.colors.surfaceMuted,
-    borderRadius: AppTheme.radii.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-  },
-  currencyChipActive: {
-    backgroundColor: AppTheme.colors.accentSoft,
-    borderColor: AppTheme.colors.accent,
-    borderWidth: 1,
-  },
-  currencyChipText: {
-    color: AppTheme.colors.inkSoft,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  currencyChipTextActive: {
-    color: AppTheme.colors.accent,
   },
   swapButton: {
     alignItems: 'center',
@@ -262,12 +214,12 @@ const styles = StyleSheet.create({
   resultLabel: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   resultValue: {
     color: AppTheme.colors.ink,
     fontSize: 28,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   rateGrid: {
     gap: 12,
@@ -285,20 +237,21 @@ const styles = StyleSheet.create({
   rateCode: {
     color: AppTheme.colors.ink,
     fontSize: 16,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   rateChange: {
     fontSize: 12,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
   rateName: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
   },
   rateValue: {
     color: AppTheme.colors.ink,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
   },
   promptList: {
     gap: 12,
@@ -313,6 +266,7 @@ const styles = StyleSheet.create({
   emptyStateText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 20,
     textAlign: 'center',
   },
@@ -325,6 +279,7 @@ const styles = StyleSheet.create({
     color: AppTheme.colors.inkSoft,
     flex: 1,
     fontSize: 13,
+    fontFamily: AppTheme.fonts.regular,
     lineHeight: 21,
   },
 });

@@ -20,7 +20,7 @@ import { extractApiError } from '@/services/api';
 import type { Sex } from '@/types/auth';
 import { formatShortDate } from '@/utils/format';
 
-const sexOptions: Array<{ label: string; value: Sex }> = [
+const sexOptions: { label: string; value: Sex }[] = [
   { label: 'Nam', value: 'NAM' },
   { label: 'Nữ', value: 'NU' },
 ] as const;
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   pickerLabel: {
     color: AppTheme.colors.ink,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
     marginLeft: 4,
   },
   pickerInput: {
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   sexChipText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: AppTheme.fonts.semibold,
     textAlign: 'center',
   },
   sexChipTextActive: {
@@ -319,10 +319,11 @@ const styles = StyleSheet.create({
   footerText: {
     color: AppTheme.colors.inkSoft,
     fontSize: 14,
+    fontFamily: AppTheme.fonts.regular,
   },
   footerLink: {
     color: AppTheme.colors.accent,
     fontSize: 14,
-    fontWeight: '800',
+    fontFamily: AppTheme.fonts.extrabold,
   },
 });

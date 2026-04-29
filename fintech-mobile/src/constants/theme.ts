@@ -1,4 +1,11 @@
 export const AppTheme = {
+  fonts: {
+    regular: 'Inter_400Regular',
+    medium: 'Inter_500Medium',
+    semibold: 'Inter_600SemiBold',
+    bold: 'Inter_700Bold',
+    extrabold: 'Inter_800ExtraBold',
+  },
   colors: {
     background: '#F3F5F1',
     surface: '#FFFFFF',
