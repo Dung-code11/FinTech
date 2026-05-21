@@ -24,6 +24,8 @@ pipeline {
 
     BACKEND_IMAGE = "${DOCKERHUB_USER}/fintrackutt-backend"
     FRONTEND_IMAGE = "${DOCKERHUB_USER}/fintrackutt-frontend"
+    DEPLOY_COMPOSE_FILE = 'docker-compose.prod.yml'
+    DEPLOY_DUMP_FILE = 'Dump20260521.sql'
 
     DEPLOY_USER = 'root'
     DEPLOY_HOST = 'localhost'
@@ -201,17 +203,43 @@ pipeline {
         expression { return params.DEPLOY }
       }
       steps {
-        sshagent(credentials: ["${SSH_CREDENTIALS}"]) {
-          sh '''
-            set -eu
+        withCredentials([usernamePassword(
+          credentialsId: "${DOCKERHUB_CREDENTIALS}",
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sshagent(credentials: ["${SSH_CREDENTIALS}"]) {
+            sh '''
+              set -eu
 
-            ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
-              cd ${DEPLOY_PATH} &&
-              docker compose pull &&
-              docker compose down &&
-              docker compose up -d
-            "
-          '''
+              if [ ! -f "$DEPLOY_COMPOSE_FILE" ]; then
+                echo "Cannot find $DEPLOY_COMPOSE_FILE"
+                exit 1
+              fi
+
+              if [ ! -f "$DEPLOY_DUMP_FILE" ]; then
+                echo "Cannot find $DEPLOY_DUMP_FILE"
+                exit 1
+              fi
+
+              ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "mkdir -p ${DEPLOY_PATH}"
+
+              scp -o StrictHostKeyChecking=no "$DEPLOY_COMPOSE_FILE" \
+                ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/docker-compose.yml
+
+              scp -o StrictHostKeyChecking=no "$DEPLOY_DUMP_FILE" \
+                ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/Dump20260521.sql
+
+              printf '%s' "$DOCKER_PASS" | ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} \
+                "docker login -u '$DOCKER_USER' --password-stdin"
+
+              ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} "
+                cd ${DEPLOY_PATH} &&
+                docker compose pull &&
+                docker compose up -d --remove-orphans
+              "
+            '''
+          }
         }
       }
     }
