@@ -1,5 +1,10 @@
-// Lấy API URL từ biến môi trường
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Lay API URL tu bien moi truong. Ho tro ca ten cu de tranh lech cau hinh deploy.
+const API_BASE_URL = (
+  import.meta.env.VITE_BACKEND_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  '/api'
+).trim();
 
 export const API_ENDPOINTS = {
   AUTH: {

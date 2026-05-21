@@ -13,8 +13,10 @@ import com.fintrack.backend.repository.OtpRepository;
 import com.fintrack.backend.sercurity.HashUtil;
 import com.fintrack.backend.util.OtpGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -72,12 +74,12 @@ public class AuthService {
 
         Account account = accountRepository
                 .findByLogin(request.login)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
         if (!account.getIsActived()) {
-            throw new RuntimeException("Account has been locked");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account has been locked");
         }
         if (!passwordEncoder.matches(request.password, account.getPassword())) {
-            throw new RuntimeException("Password incorrect");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Password incorrect");
         }
 
         String token = jwtService.generateToken(account);

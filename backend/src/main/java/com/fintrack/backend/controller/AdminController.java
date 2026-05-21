@@ -15,9 +15,11 @@ import com.fintrack.backend.repository.SavingRepository;
 import com.fintrack.backend.repository.WalletRepository;
 import com.fintrack.backend.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +45,7 @@ public class AdminController {
     private void checkAdmin(Authentication auth) {
         Account account = (Account) auth.getPrincipal();
         if (account.getRole() != Role.ADMIN) {
-            throw new RuntimeException("Access denied. Admin role required.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied. Admin role required.");
         }
     }
 
