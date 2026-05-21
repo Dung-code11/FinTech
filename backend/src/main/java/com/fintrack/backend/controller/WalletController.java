@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/wallet")
+@RequestMapping({"/api/wallet", "/wallet"})
 public class WalletController {
 
     @Autowired

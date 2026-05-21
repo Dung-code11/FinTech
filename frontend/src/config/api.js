@@ -1,10 +1,14 @@
 // Lay API URL tu bien moi truong. Ho tro ca ten cu de tranh lech cau hinh deploy.
-const API_BASE_URL = (
+const rawApiBaseUrl = (
   import.meta.env.VITE_BACKEND_API_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
   '/api'
 ).trim();
+
+const API_BASE_URL = rawApiBaseUrl.startsWith('http')
+  ? rawApiBaseUrl.replace(/\/+$/, '')
+  : `/${rawApiBaseUrl.replace(/^\/+|\/+$/g, '') || 'api'}`;
 
 export const API_ENDPOINTS = {
   AUTH: {

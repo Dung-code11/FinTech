@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping({"/api/user", "/user"})
 public class UserController {
 
     @GetMapping("/profile")

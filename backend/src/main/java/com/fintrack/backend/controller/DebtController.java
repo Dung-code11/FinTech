@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/debts")
+@RequestMapping({"/api/debts", "/debts"})
 @RequiredArgsConstructor
 public class DebtController {
 

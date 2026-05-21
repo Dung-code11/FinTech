@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/sub-category")
+@RequestMapping({"/api/sub-category", "/sub-category"})
 public class SubCategoryController {
 
     @Autowired
