@@ -97,6 +97,55 @@ export const adminService = {
   },
 
   // ========== QUẢN LÝ GIAO DỊCH ==========
+  async getCategories(params = {}) {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const url = query ? `${API_ENDPOINTS.ADMIN.CATEGORIES}?${query}` : API_ENDPOINTS.ADMIN.CATEGORIES;
+      const res = await fetch(url, { headers: getHeaders() });
+      return { success: true, data: await handleResponse(res) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async createCategory(categoryData) {
+    try {
+      const res = await fetch(API_ENDPOINTS.ADMIN.CATEGORIES, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(categoryData)
+      });
+      return { success: true, data: await handleResponse(res) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async updateCategory(id, categoryData) {
+    try {
+      const res = await fetch(API_ENDPOINTS.ADMIN.UPDATE_CATEGORY(id), {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(categoryData)
+      });
+      return { success: true, data: await handleResponse(res) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
+  async deleteCategory(id) {
+    try {
+      const res = await fetch(API_ENDPOINTS.ADMIN.DELETE_CATEGORY(id), {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      return { success: true, data: await handleResponse(res) };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   async getTransactions(params = {}) {
     try {
       const query = new URLSearchParams(params).toString();

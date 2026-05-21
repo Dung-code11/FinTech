@@ -1,0 +1,266 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Controllers" {
+  class AiController <<controller>> {
+    -aiService: AiService
+    +chat(req: ChatRequest, auth): ChatResponse
+  }
+}
+
+package "Services" {
+  class AiService <<service>> {
+    -analyzer: AiAnalyzerService
+    -predictor: AiPredictService
+    -geminiService: GeminiService
+    -transactionAIService: TransactionAIService
+    -financeSnapshotService: AiFinanceSnapshotService
+    +chat(request: ChatRequest, accountId: String): ChatResponse
+    -detectIntent(normalizedMessage: String): ChatIntent
+    -buildGeneralReply(request: ChatRequest, snapshot: FinanceSnapshot): String
+  }
+
+  class TransactionAIService <<service>> {
+    -geminiService: GeminiService
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -categoryRepository: CategoryRepository
+    -accountRepository: AccountRepository
+    +handleTransaction(message: String, accountId: String): ChatResponse
+  }
+
+  class AiFinanceSnapshotService <<service>> {
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -debtRepository: DebtRepository
+    -savingRepository: SavingRepository
+    -budgetService: BudgetService
+    +buildSnapshot(accountId: String): FinanceSnapshot
+  }
+
+  class AiAnalyzerService <<service>> {
+    -transactionRepository: TransactionRepository
+    +buildOverview(snapshot: FinanceSnapshot): String
+    +analyzeSpending(snapshot: FinanceSnapshot): String
+    +summarizeWallets(snapshot: FinanceSnapshot): String
+    +summarizeBudgets(snapshot: FinanceSnapshot): String
+    +summarizeSavings(snapshot: FinanceSnapshot): String
+    +summarizeDebts(snapshot: FinanceSnapshot): String
+    +summarizeRecentTransactions(snapshot: FinanceSnapshot): String
+    +detectLeak(accountId: String): String
+  }
+
+  class AiPredictService <<service>> {
+    +predict(snapshot: FinanceSnapshot): String
+  }
+
+  class GeminiService <<service>> {
+    -apiKey: String
+    +isAvailable(): boolean
+    +callGemini(prompt: String): String
+    +callGemini(prompt: String, fallback: String): String
+    +parseJsonObject(responseText: String): Map<String, Object>
+  }
+
+  class BudgetService <<service>> {
+    +getBudgetsByWallet(walletId: String): List<Budget>
+  }
+
+  class FinanceSnapshot <<record>> {
+    -wallets: List<Wallet>
+    -budgets: List<Budget>
+    -debts: List<Debt>
+    -savings: List<Saving>
+    -monthTransactions: List<Transaction>
+    -recentTransactions: List<Transaction>
+    -overBudgetItems: List<Budget>
+    -nearLimitBudgetItems: List<Budget>
+    -topExpenseCategories: List<CategorySpend>
+    -cashBalance: BigDecimal
+    -availableCredit: BigDecimal
+    -outstandingCardBalance: BigDecimal
+    -monthIncome: BigDecimal
+    -monthExpense: BigDecimal
+    -monthNet: BigDecimal
+    -totalDebtRemaining: BigDecimal
+    -totalSavingCurrent: BigDecimal
+    -totalSavingTarget: BigDecimal
+    +hasAnyData(): boolean
+  }
+
+  class CategorySpend <<record>> {
+    -categoryName: String
+    -amount: BigDecimal
+  }
+}
+
+package "Repositories" {
+  interface WalletRepository <<repository>> {
+    +findByAccount_Id(accountId: String): List<Wallet>
+  }
+
+  interface TransactionRepository <<repository>> {
+    +findByWallet_Account_IdAndCreatedAtBetween(accountId: String, start: LocalDateTime, end: LocalDateTime): List<Transaction>
+    +findTop12ByWallet_Account_IdOrderByCreatedAtDesc(accountId: String): List<Transaction>
+    +findSmallFrequent(accountId: String): List<Object[]>
+  }
+
+  interface DebtRepository <<repository>> {
+    +findByWallet_Account_Id(accountId: String): List<Debt>
+  }
+
+  interface SavingRepository <<repository>> {
+    +findByWallet_Account_Id(accountId: String): List<Saving>
+  }
+
+  interface CategoryRepository <<repository>> {
+    +findSmartCategoryByNameAndType(name: String, type: CategoryType, accountId: String): Optional<Category>
+  }
+
+  interface AccountRepository <<repository>> {
+    +findById(accountId: String): Optional<Account>
+  }
+}
+
+package "Domain" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+  }
+
+  class Wallet <<entity>> {
+    -id: String
+    -name: String
+    -type: WalletType
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+  }
+
+  class Transaction <<entity>> {
+    -id: String
+    -type: TransactionType
+    -amount: BigDecimal
+    -description: String
+    -createdAt: LocalDateTime
+  }
+
+  class Category <<entity>> {
+    -id: String
+    -categoryName: String
+    -type: CategoryType
+    -isDefault: Boolean
+  }
+
+  class Budget <<entity>> {
+    -id: String
+    -budget_name: String
+    -amount: double
+    -spent: double
+    -endDate: LocalDate
+  }
+
+  class Debt <<entity>> {
+    -id: Long
+    -name: String
+    -remainingAmount: BigDecimal
+    -targetDate: LocalDate
+  }
+
+  class Saving <<entity>> {
+    -id: String
+    -title: String
+    -currentAmount: BigDecimal
+    -targetAmount: BigDecimal
+    -targetDate: LocalDate
+  }
+
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  enum CategoryType {
+    INCOME
+    EXPENSE
+  }
+
+  enum WalletType {
+    CASH
+    CREDIT
+  }
+
+  enum ChatIntent {
+    HELP
+    OVERVIEW
+    SPENDING_ANALYSIS
+    BUDGET_STATUS
+    SAVINGS_STATUS
+    DEBT_STATUS
+    WALLET_STATUS
+    RECENT_TRANSACTIONS
+    PREDICTION
+    GENERAL
+  }
+}
+
+package "DTOs" {
+  class ChatRequest <<dto>> {
+    -message: String
+    -activeTab: String
+  }
+
+  class "ChatRequest.HistoryItem" as ChatHistoryItem <<dto>> {
+    -role: String
+    -text: String
+  }
+
+  class ChatResponse <<dto>> {
+    -reply: String
+    -action: String
+    -refreshScopes: List<String>
+  }
+}
+
+AiController --> AiService
+AiService --> TransactionAIService
+AiService --> AiFinanceSnapshotService
+AiService --> AiAnalyzerService
+AiService --> AiPredictService
+AiService --> GeminiService
+
+TransactionAIService --> GeminiService
+TransactionAIService --> WalletRepository
+TransactionAIService --> TransactionRepository
+TransactionAIService --> CategoryRepository
+TransactionAIService --> AccountRepository
+
+AiFinanceSnapshotService --> WalletRepository
+AiFinanceSnapshotService --> TransactionRepository
+AiFinanceSnapshotService --> DebtRepository
+AiFinanceSnapshotService --> SavingRepository
+AiFinanceSnapshotService --> BudgetService
+
+AiAnalyzerService --> TransactionRepository
+AiService ..> ChatIntent
+AiController ..> ChatRequest
+AiController ..> ChatResponse
+AiService ..> ChatRequest
+AiService ..> ChatResponse
+TransactionAIService ..> ChatResponse
+
+ChatRequest "1" o-- "0..*" ChatHistoryItem : history
+FinanceSnapshot "1" o-- "0..*" Wallet
+FinanceSnapshot "1" o-- "0..*" Budget
+FinanceSnapshot "1" o-- "0..*" Debt
+FinanceSnapshot "1" o-- "0..*" Saving
+FinanceSnapshot "1" o-- "0..*" Transaction
+FinanceSnapshot "1" o-- "0..*" CategorySpend
+
+Wallet ..> WalletType
+Transaction ..> TransactionType
+Category ..> CategoryType
+@enduml

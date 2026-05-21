@@ -1,5 +1,7 @@
 package com.fintrack.backend.controller;
 
+import com.fintrack.backend.dto.CategoryRequest;
+import com.fintrack.backend.dto.Response.AdminCategoryResponse;
 import com.fintrack.backend.dto.Response.AdminStatsResponse;
 import com.fintrack.backend.dto.Response.AdminTransactionResponse;
 import com.fintrack.backend.dto.Response.AdminUserResponse;
@@ -17,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -156,6 +157,77 @@ public class AdminController {
     }
 
     // ========== QUẢN LÝ GIAO DỊCH ==========
+    @GetMapping("/categories")
+    public ResponseEntity<List<AdminCategoryResponse>> getAllCategories(
+            Authentication auth,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String scope
+    ) {
+        checkAdmin(auth);
+        List<AdminCategoryResponse> categories = adminService.getAllCategories();
+
+        if (search != null && !search.isBlank()) {
+            String s = search.toLowerCase();
+            categories = categories.stream()
+                    .filter(c -> (c.getName() != null && c.getName().toLowerCase().contains(s))
+                            || (c.getOwnerUsername() != null && c.getOwnerUsername().toLowerCase().contains(s)))
+                    .toList();
+        }
+
+        if (type != null && !type.isBlank()) {
+            categories = categories.stream()
+                    .filter(c -> c.getType() != null && c.getType().equalsIgnoreCase(type))
+                    .toList();
+        }
+
+        if (scope != null && !scope.isBlank()) {
+            if ("default".equalsIgnoreCase(scope)) {
+                categories = categories.stream()
+                        .filter(c -> Boolean.TRUE.equals(c.getIsDefault()))
+                        .toList();
+            } else if ("custom".equalsIgnoreCase(scope)) {
+                categories = categories.stream()
+                        .filter(c -> !Boolean.TRUE.equals(c.getIsDefault()))
+                        .toList();
+            }
+        }
+
+        return ResponseEntity.ok(categories);
+    }
+
+    @PostMapping("/categories")
+    public ResponseEntity<AdminCategoryResponse> createCategory(
+            @RequestBody CategoryRequest request,
+            Authentication auth
+    ) {
+        checkAdmin(auth);
+        return ResponseEntity.ok(adminService.createCategory(request));
+    }
+
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<AdminCategoryResponse> updateCategory(
+            @PathVariable String id,
+            @RequestBody CategoryRequest request,
+            Authentication auth
+    ) {
+        checkAdmin(auth);
+        return ResponseEntity.ok(adminService.updateCategory(id, request));
+    }
+
+    @DeleteMapping("/categories/{id}")
+    public ResponseEntity<Map<String, String>> deleteCategory(
+            @PathVariable String id,
+            Authentication auth
+    ) {
+        checkAdmin(auth);
+        adminService.deleteCategory(id);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Xoa danh muc thanh cong");
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/transactions")
     public ResponseEntity<List<AdminTransactionResponse>> getAllTransactions(
             Authentication auth,

@@ -1,0 +1,199 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Controllers" {
+  class AuthController <<controller>> {
+    -authService: AuthService
+    +register(request: RegisterRequest): String
+    +login(request: LoginRequest): LoginResponse
+    +forgotPassword(request: ForgotPasswordRequest): String
+    +verifyOtp(request: VerifyOtpRequest): String
+    +resetPassword(request: ResetPasswordRequest): String
+    +updateStatus(id: String, status: boolean): String
+  }
+
+  class UserController <<controller>> {
+    +profile(authentication): Object
+  }
+}
+
+package "Services" {
+  class AuthService <<service>> {
+    -accountRepository: AccountRepository
+    -infoUserRepository: InfoUserRepository
+    -passwordEncoder: PasswordEncoder
+    -jwtService: JwtService
+    -otpRepository: OtpRepository
+    -emailService: EmailService
+    +register(request: RegisterRequest): void
+    +login(request: LoginRequest): LoginResponse
+    +sendOtp(email: String): void
+    +verifyOtp(email: String, otp: String): void
+    +resetPassword(email: String, otp: String, newPassword: String): void
+    +toggleAccount(accountId: String, status: boolean): void
+  }
+
+  class JwtService <<service>> {
+    -jwtSecretKey: String
+    +generateToken(account: Account): String
+    +extractAllClaims(token: String): Claims
+    +extractUsername(token: String): String
+  }
+
+  class EmailService <<service>> {
+    -mailSender: JavaMailSender
+    +sendOtpEmail(email: String, otp: String): void
+  }
+
+  abstract class OncePerRequestFilter <<framework>>
+
+  class JwtAuthenticationFilter <<filter>> {
+    -jwtService: JwtService
+    -accountRepository: AccountRepository
+    +doFilterInternal(request, response, filterChain): void
+  }
+
+  class SecurityConfig <<config>> {
+    -jwtFilter: JwtAuthenticationFilter
+    +securityFilterChain(http): SecurityFilterChain
+    +passwordEncoder(): PasswordEncoder
+  }
+
+  class OtpGenerator <<utility>> {
+    +generateOtp(): String
+  }
+
+  class HashUtil <<utility>> {
+    +sha256(input: String): String
+  }
+}
+
+package "Repositories" {
+  interface AccountRepository <<repository>> {
+    +findByLogin(login: String): Optional<Account>
+    +findByUsername(username: String): Optional<Account>
+  }
+
+  interface InfoUserRepository <<repository>> {
+    +findByEmail(email: String): Optional<InfoUser>
+    +findByFullname(fullname: String): Optional<InfoUser>
+  }
+
+  interface OtpRepository <<repository>> {
+    +findTopByEmailOrderByCreatedAtDesc(email: String): Optional<PasswordResetOtp>
+  }
+}
+
+package "Domain" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+    -password: String
+    -role: Role
+    -isActived: Boolean
+  }
+
+  class InfoUser <<entity>> {
+    -id: String
+    -fullname: String
+    -email: String
+    -birthday: LocalDate
+    -address: String
+    -phone: String
+    -sex: Sex
+  }
+
+  class PasswordResetOtp <<entity>> {
+    -id: Long
+    -email: String
+    -otpHash: String
+    -expiryTime: LocalDateTime
+    -used: boolean
+    -createdAt: LocalDateTime
+  }
+
+  enum Role {
+    USER
+    ADMIN
+  }
+
+  enum Sex {
+    NAM
+    NU
+  }
+}
+
+package "DTOs" {
+  class RegisterRequest <<dto>> {
+    -username: String
+    -password: String
+    -fullname: String
+    -birthday: LocalDate
+    -sex: Sex
+    -address: String
+    -email: String
+    -phone: String
+  }
+
+  class LoginRequest <<dto>> {
+    -login: String
+    -password: String
+  }
+
+  class ForgotPasswordRequest <<dto>> {
+    -email: String
+  }
+
+  class VerifyOtpRequest <<dto>> {
+    -email: String
+    -otp: String
+  }
+
+  class ResetPasswordRequest <<dto>> {
+    -email: String
+    -otp: String
+    -newPassword: String
+  }
+
+  class LoginResponse <<dto>> {
+    -accessToken: String
+    -userId: String
+    -username: String
+    -role: Role
+  }
+}
+
+JwtAuthenticationFilter --|> OncePerRequestFilter
+
+AuthController --> AuthService
+UserController ..> Account : reads principal
+
+AuthService --> AccountRepository
+AuthService --> InfoUserRepository
+AuthService --> OtpRepository
+AuthService --> JwtService
+AuthService --> EmailService
+AuthService ..> OtpGenerator
+AuthService ..> HashUtil
+
+JwtAuthenticationFilter --> JwtService
+JwtAuthenticationFilter --> AccountRepository
+SecurityConfig --> JwtAuthenticationFilter
+
+AuthController ..> RegisterRequest
+AuthController ..> LoginRequest
+AuthController ..> ForgotPasswordRequest
+AuthController ..> VerifyOtpRequest
+AuthController ..> ResetPasswordRequest
+AuthController ..> LoginResponse
+
+AccountRepository ..> Account
+InfoUserRepository ..> InfoUser
+OtpRepository ..> PasswordResetOtp
+
+Account "1" *-- "0..1" InfoUser : infoUser
+Account ..> Role
+InfoUser ..> Sex
+@enduml

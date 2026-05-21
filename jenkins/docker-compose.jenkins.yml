@@ -4,6 +4,13 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: fintech-jenkins
+    # Make sure Jenkins can access the host Docker daemon via the mounted socket.
+    # Set DOCKER_GID on the host to match: `stat -c %g /var/run/docker.sock`
+    group_add:
+      - "${DOCKER_GID:-0}"
+    # For local/dev on Docker Desktop, the socket can be `root:root` with restrictive perms.
+    # If you still get "permission denied ... docker.sock", uncomment the next line to run Jenkins as root.
+    user: "0:0"
     ports:
       - "8081:8080"
       - "50000:50000"

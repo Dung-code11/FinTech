@@ -1,0 +1,973 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Controllers" {
+  class AuthController <<controller>> {
+    -authService: AuthService
+    +register(request: RegisterRequest): String
+    +login(request: LoginRequest): LoginResponse
+    +forgotPassword(request: ForgotPasswordRequest): String
+    +verifyOtp(request: VerifyOtpRequest): String
+    +resetPassword(request: ResetPasswordRequest): String
+    +updateStatus(id: String, status: boolean): String
+  }
+
+  class UserController <<controller>> {
+    +profile(authentication): Object
+  }
+
+  class WalletController <<controller>> {
+    -walletService: WalletService
+    +getWallets(authentication): List<WalletResponse>
+    +getWallet(walletId: String, authentication): WalletResponse
+    +createWallet(authentication, request: WalletRequest): String
+    +updateWallet(walletId: String, authentication, request: WalletRequest): String
+    +deleteWallet(walletId: String, authentication): String
+  }
+
+  class TransactionController <<controller>> {
+    -service: TransactionService
+    +getAll(auth): List<Transaction>
+    +getById(id: String, auth): Transaction
+    +create(req: TransactionRequest, auth): Transaction
+    +update(id: String, req: TransactionRequest, auth): Transaction
+    +delete(id: String, auth): String
+  }
+
+  class CategoryController <<controller>> {
+    -service: CategoryService
+    +get(type: String, auth): List<Category>
+    +create(req: CategoryRequest, auth): Category
+    +update(id: String, req: CategoryRequest, auth): Category
+    +delete(id: String, auth): void
+  }
+
+  class SubCategoryController <<controller>> {
+    -service: SubCategoryService
+    +get(categoryId: String, auth): List<SubCategory>
+    +create(req: SubCategoryRequest, auth): SubCategory
+    +delete(id: String, auth): void
+  }
+
+  class BudgetController <<controller>> {
+    -budgetService: BudgetService
+    +createBudget(walletId: String, request: BudgetRequest): BudgetResponse
+    +getBudgetsByWallet(walletId: String): List<BudgetResponse>
+    +getBudgetDetail(budgetId: String): BudgetResponse
+    +updateBudget(budgetId: String, request: BudgetRequest): BudgetResponse
+    +deleteBudget(budgetId: String): String
+  }
+
+  class SavingController <<controller>> {
+    -savingService: SavingService
+    +create(walletId: String, request: SavingRequest): SavingResponse
+    +getByWallet(walletId: String): List<SavingResponse>
+    +deposit(savingId: String, request: SavingTransactionRequest): SavingResponse
+    +withdraw(savingId: String, request: WithdrawSavingRequest): SavingResponse
+  }
+
+  class DebtController <<controller>> {
+    -debtService: DebtService
+    -walletRepository: WalletRepository
+    +create(dto: DebtRequest): DebtResponse
+    +getAll(): List<DebtResponse>
+    +getOne(id: Long): DebtResponse
+    +pay(id: Long, dto: DebtPaymentRequest, account: Account): DebtPaymentResponse
+    +payments(id: Long): List<DebtPaymentResponse>
+  }
+
+  class AdminController <<controller>> {
+    -adminService: AdminService
+    -walletRepository: WalletRepository
+    -debtRepository: DebtRepository
+    -savingRepository: SavingRepository
+    +getStats(auth): AdminStatsResponse
+    +getAllUsers(auth, search: String, role: String, active: Boolean): List<AdminUserResponse>
+    +getUserById(id: String, auth): AdminUserResponse
+    +toggleUserStatus(id: String, active: boolean, auth): Map
+    +updateUserRole(id: String, role: String, auth): Map
+    +getAllWallets(auth): List<Map>
+    +getAllTransactions(auth, type: String, search: String, accountId: String): List<AdminTransactionResponse>
+    +deleteTransaction(id: String, auth): Map
+    +getAllDebts(auth): List<Map>
+    +getAllSavings(auth): List<Map>
+    +getDashboardData(auth): Map
+    -checkAdmin(auth): void
+  }
+
+  class AiController <<controller>> {
+    -aiService: AiService
+    +chat(req: ChatRequest, auth): ChatResponse
+  }
+}
+
+package "Services" {
+  class AuthService <<service>> {
+    -accountRepository: AccountRepository
+    -infoUserRepository: InfoUserRepository
+    -passwordEncoder: PasswordEncoder
+    -jwtService: JwtService
+    -otpRepository: OtpRepository
+    -emailService: EmailService
+    +register(request: RegisterRequest): void
+    +login(request: LoginRequest): LoginResponse
+    +sendOtp(email: String): void
+    +verifyOtp(email: String, otp: String): void
+    +resetPassword(email: String, otp: String, newPassword: String): void
+    +toggleAccount(accountId: String, status: boolean): void
+  }
+
+  class JwtService <<service>> {
+    -jwtSecretKey: String
+    +generateToken(account: Account): String
+    +extractAllClaims(token: String): Claims
+    +extractUsername(token: String): String
+  }
+
+  class EmailService <<service>> {
+    -mailSender: JavaMailSender
+    +sendOtpEmail(email: String, otp: String): void
+  }
+
+  class WalletService <<service>> {
+    -walletRepository: WalletRepository
+    -accountRepository: AccountRepository
+    -toResponse(wallet: Wallet): WalletResponse
+    +getWallets(accountId: String): List<WalletResponse>
+    +getWalletById(walletId: String, accountId: String): WalletResponse
+    +createWallet(accountId: String, request: WalletRequest): void
+    +updateWallet(walletId: String, accountId: String, request: WalletRequest): void
+    +deleteWallet(walletId: String, accountId: String): void
+  }
+
+  class TransactionService <<service>> {
+    -transactionRepository: TransactionRepository
+    -walletRepository: WalletRepository
+    -categoryRepository: CategoryRepository
+    +getAll(account: Account): List<Transaction>
+    +getById(id: String, account: Account): Transaction
+    +create(req: TransactionRequest, account: Account): Transaction
+    +update(id: String, req: TransactionRequest, account: Account): Transaction
+    +delete(id: String, account: Account): void
+    +createDebtPaymentTransaction(wallet: Wallet, debtName: String, debtId: Long, amount: BigDecimal, note: String, account: Account): Transaction
+    +createDebtIncomeTransaction(wallet: Wallet, debtName: String, debtId: Long, amount: BigDecimal, note: String, account: Account): Transaction
+    -findOrCreateCategory(categoryName: String, type: CategoryType, account: Account): Category
+    -getWalletAndCheck(walletId: String, accountId: String): Wallet
+    -handleCategory(req: TransactionRequest, t: Transaction, account: Account): void
+    -processMoney(t: Transaction, wallet: Wallet, req: TransactionRequest): void
+    -rollbackMoney(t: Transaction): void
+  }
+
+  class CategoryService <<service>> {
+    -categoryRepository: CategoryRepository
+    +getByType(type: String, accountId: String): List<Category>
+    +create(req: CategoryRequest, accountId: String): Category
+    +update(id: String, req: CategoryRequest, accountId: String): Category
+    +delete(id: String, accountId: String): void
+  }
+
+  class SubCategoryService <<service>> {
+    -subRepo: SubCategoryRepository
+    -categoryRepo: CategoryRepository
+    +get(categoryId: String, accountId: String): List<SubCategory>
+    +create(req: SubCategoryRequest, accountId: String): SubCategory
+    +delete(id: String, accountId: String): void
+  }
+
+  class BudgetService <<service>> {
+    -budgetRepository: BudgetRepository
+    -walletRepository: WalletRepository
+    -categoryRepository: CategoryRepository
+    -transactionRepository: TransactionRepository
+    +createBudget(walletId: String, request: BudgetRequest): Budget
+    +getBudgetById(id: String): Budget
+    +updateBudget(id: String, request: BudgetRequest): Budget
+    +deleteBudget(id: String): void
+    +getBudgetsByWallet(walletId: String): List<Budget>
+    -calculateSpentOptimized(budget: Budget): double
+  }
+
+  class SavingService <<service>> {
+    -savingRepository: SavingRepository
+    -transactionRepository: SavingTransactionRepository
+    -walletRepository: WalletRepository
+    -transactionRepo: TransactionRepository
+    +createSaving(walletId: String, req: SavingRequest): Saving
+    +getByWallet(walletId: String): List<Saving>
+    +addMoney(savingId: String, req: SavingTransactionRequest): Saving
+    +withdraw(savingId: String, req: WithdrawSavingRequest): Saving
+  }
+
+  class DebtService <<service>> {
+    -debtRepository: DebtRepository
+    -paymentRepository: DebtPaymentRepository
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -categoryRepository: CategoryRepository
+    -accountRepository: AccountRepository
+    +createDebt(debt: Debt): Debt
+    +getAll(): List<Debt>
+    +getById(id: Long): Debt
+    +payDebt(debtId: Long, payment: DebtPayment, username: String): DebtPayment
+    +getPayments(debtId: Long): List<DebtPayment>
+    -createTransactionForDebtPayment(wallet: Wallet, debt: Debt, amount: BigDecimal, note: String, account: Account): void
+    -findOrCreateCategory(categoryName: String, type: CategoryType, account: Account): Category
+  }
+
+  class AdminService <<service>> {
+    -accountRepository: AccountRepository
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -debtRepository: DebtRepository
+    -savingRepository: SavingRepository
+    +getAllUsers(): List<AdminUserResponse>
+    +getUserById(accountId: String): AdminUserResponse
+    +toggleAccountStatus(accountId: String, active: boolean): void
+    +updateUserRole(accountId: String, role: String): void
+    +getAllTransactions(): List<AdminTransactionResponse>
+    +getStats(): AdminStatsResponse
+    +getAllWallets(): List<Object[]>
+  }
+
+  class AiService <<service>> {
+    -analyzer: AiAnalyzerService
+    -predictor: AiPredictService
+    -geminiService: GeminiService
+    -transactionAIService: TransactionAIService
+    -financeSnapshotService: AiFinanceSnapshotService
+    +chat(request: ChatRequest, accountId: String): ChatResponse
+    -detectIntent(normalizedMessage: String): ChatIntent
+    -buildGeneralReply(request: ChatRequest, snapshot: FinanceSnapshot): String
+  }
+
+  class TransactionAIService <<service>> {
+    -geminiService: GeminiService
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -categoryRepository: CategoryRepository
+    -accountRepository: AccountRepository
+    +handleTransaction(message: String, accountId: String): ChatResponse
+  }
+
+  class AiFinanceSnapshotService <<service>> {
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -debtRepository: DebtRepository
+    -savingRepository: SavingRepository
+    -budgetService: BudgetService
+    +buildSnapshot(accountId: String): FinanceSnapshot
+  }
+
+  class AiAnalyzerService <<service>> {
+    -transactionRepository: TransactionRepository
+    +buildOverview(snapshot: FinanceSnapshot): String
+    +analyzeSpending(snapshot: FinanceSnapshot): String
+    +summarizeWallets(snapshot: FinanceSnapshot): String
+    +summarizeBudgets(snapshot: FinanceSnapshot): String
+    +summarizeSavings(snapshot: FinanceSnapshot): String
+    +summarizeDebts(snapshot: FinanceSnapshot): String
+    +summarizeRecentTransactions(snapshot: FinanceSnapshot): String
+    +detectLeak(accountId: String): String
+  }
+
+  class AiPredictService <<service>> {
+    +predict(snapshot: FinanceSnapshot): String
+  }
+
+  class GeminiService <<service>> {
+    -apiKey: String
+    +isAvailable(): boolean
+    +callGemini(prompt: String): String
+    +callGemini(prompt: String, fallback: String): String
+    +parseJsonObject(responseText: String): Map<String, Object>
+  }
+
+  abstract class OncePerRequestFilter <<framework>>
+
+  class JwtAuthenticationFilter <<filter>> {
+    -jwtService: JwtService
+    -accountRepository: AccountRepository
+    +doFilterInternal(request, response, filterChain): void
+  }
+
+  class SecurityConfig <<config>> {
+    -jwtFilter: JwtAuthenticationFilter
+    +securityFilterChain(http): SecurityFilterChain
+    +passwordEncoder(): PasswordEncoder
+  }
+
+  class BudgetMapper <<utility>> {
+    +toDTO(budget: Budget): BudgetResponse
+  }
+
+  class SavingMapper <<utility>> {
+    +toDTO(saving: Saving): SavingResponse
+    +toTransactionDTO(tx: SavingTransaction): SavingTransactionResponse
+  }
+
+  class DebtMapper <<utility>> {
+    +toEntity(dto: DebtRequest, wallet: Wallet): Debt
+    +toDTO(debt: Debt): DebtResponse
+  }
+
+  class PaymentMapper <<utility>> {
+    +toEntity(dto: DebtPaymentRequest, wallet: Wallet, debt: Debt): DebtPayment
+    +toDTO(payment: DebtPayment): DebtPaymentResponse
+  }
+
+  class OtpGenerator <<utility>> {
+    +generateOtp(): String
+  }
+
+  class HashUtil <<utility>> {
+    +sha256(input: String): String
+  }
+
+  class FinanceSnapshot <<record>> {
+    -wallets: List<Wallet>
+    -budgets: List<Budget>
+    -debts: List<Debt>
+    -savings: List<Saving>
+    -monthTransactions: List<Transaction>
+    -recentTransactions: List<Transaction>
+    -overBudgetItems: List<Budget>
+    -nearLimitBudgetItems: List<Budget>
+    -topExpenseCategories: List<CategorySpend>
+    -cashBalance: BigDecimal
+    -availableCredit: BigDecimal
+    -outstandingCardBalance: BigDecimal
+    -monthIncome: BigDecimal
+    -monthExpense: BigDecimal
+    -monthNet: BigDecimal
+    -totalDebtRemaining: BigDecimal
+    -totalSavingCurrent: BigDecimal
+    -totalSavingTarget: BigDecimal
+    +hasAnyData(): boolean
+  }
+
+  class CategorySpend <<record>> {
+    -categoryName: String
+    -amount: BigDecimal
+  }
+}
+
+package "Repositories" {
+  interface AccountRepository <<repository>> {
+    +findByLogin(login: String): Optional<Account>
+    +findByUsername(username: String): Optional<Account>
+    +findById(accountId: String): Optional<Account>
+    +findAll(): List<Account>
+  }
+
+  interface InfoUserRepository <<repository>> {
+    +findByEmail(email: String): Optional<InfoUser>
+    +findByFullname(fullname: String): Optional<InfoUser>
+  }
+
+  interface OtpRepository <<repository>> {
+    +findTopByEmailOrderByCreatedAtDesc(email: String): Optional<PasswordResetOtp>
+  }
+
+  interface WalletRepository <<repository>> {
+    +findByAccount_Id(accountId: String): List<Wallet>
+    +findById(walletId: String): Optional<Wallet>
+    +findAll(): List<Wallet>
+    +count(): long
+  }
+
+  interface TransactionRepository <<repository>> {
+    +findByWallet_Account_Id(accountId: String): List<Transaction>
+    +findByWallet_Account_IdAndCreatedAtBetween(accountId: String, start: LocalDateTime, end: LocalDateTime): List<Transaction>
+    +findTop12ByWallet_Account_IdOrderByCreatedAtDesc(accountId: String): List<Transaction>
+    +sumByWalletAndTypeAndDate(walletId: String, type: TransactionType, start: LocalDateTime, end: LocalDateTime): BigDecimal
+    +sumByWalletTypeCategoryAndDate(walletId: String, type: TransactionType, categoryIds: List<String>, start: LocalDateTime, end: LocalDateTime): BigDecimal
+    +findSmallFrequent(accountId: String): List<Object[]>
+    +findAll(): List<Transaction>
+    +count(): long
+  }
+
+  interface CategoryRepository <<repository>> {
+    +findByTypeAndOwner_IdOrTypeAndIsDefaultTrue(type: CategoryType, ownerId: String, type2: CategoryType): List<Category>
+    +findByOwnerAndType(account: Account, type: CategoryType): List<Category>
+    +findByCategoryNameAndIsDefaultTrue(name: String): Optional<Category>
+    +findSmartCategoryByNameAndType(name: String, type: CategoryType, accountId: String): Optional<Category>
+  }
+
+  interface SubCategoryRepository <<repository>> {
+    +findByCategoryAndOwner(categoryId: String, accountId: String): List<SubCategory>
+  }
+
+  interface BudgetRepository <<repository>> {
+    +findByWallet_Id(walletId: String): List<Budget>
+  }
+
+  interface SavingRepository <<repository>> {
+    +findByWallet_Id(walletId: String): List<Saving>
+    +findByWallet_Account_Id(accountId: String): List<Saving>
+    +findAll(): List<Saving>
+    +count(): long
+  }
+
+  interface SavingTransactionRepository <<repository>> {
+  }
+
+  interface DebtRepository <<repository>> {
+    +findByWallet_Account_Id(accountId: String): List<Debt>
+    +findAll(): List<Debt>
+    +count(): long
+  }
+
+  interface DebtPaymentRepository <<repository>> {
+    +findByDebtId(debtId: Long): List<DebtPayment>
+  }
+}
+
+package "Domain" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+    -password: String
+    -role: Role
+    -isActived: Boolean
+  }
+
+  class InfoUser <<entity>> {
+    -id: String
+    -fullname: String
+    -email: String
+    -birthday: LocalDate
+    -address: String
+    -phone: String
+    -sex: Sex
+  }
+
+  class PasswordResetOtp <<entity>> {
+    -id: Long
+    -email: String
+    -otpHash: String
+    -expiryTime: LocalDateTime
+    -used: boolean
+    -createdAt: LocalDateTime
+  }
+
+  class Wallet <<entity>> {
+    -id: String
+    -type: WalletType
+    -name: String
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class Transaction <<entity>> {
+    -id: String
+    -type: TransactionType
+    -amount: BigDecimal
+    -description: String
+    -createdAt: LocalDateTime
+  }
+
+  class Category <<entity>> {
+    -id: String
+    -categoryName: String
+    -type: CategoryType
+    -isDefault: Boolean
+  }
+
+  class SubCategory <<entity>> {
+    -id: String
+    -subcategoryName: String
+    -isDefault: Boolean
+  }
+
+  class Budget <<entity>> {
+    -id: String
+    -budget_name: String
+    -type: BudgetType
+    -amount: double
+    -spent: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: BudgetPeriod
+  }
+
+  class Saving <<entity>> {
+    -id: String
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -type: SavingType
+    -category: String
+    -targetDate: LocalDate
+    -period: SavingPeriod
+    -status: SavingStatus
+  }
+
+  class SavingTransaction <<entity>> {
+    -id: Long
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+  }
+
+  class Debt <<entity>> {
+    -id: Long
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -remainingAmount: BigDecimal
+    -createdDate: LocalDateTime
+    -targetDate: LocalDate
+    -Note: String
+    +prePersist(): void
+  }
+
+  class DebtPayment <<entity>> {
+    -id: Long
+    -title: String
+    -amount: BigDecimal
+    -paymentDate: LocalDateTime
+    -Note: String
+    +prePersist(): void
+  }
+
+  enum Role {
+    USER
+    ADMIN
+  }
+
+  enum Sex {
+    NAM
+    NU
+  }
+
+  enum WalletType {
+    CASH
+    CREDIT
+  }
+
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  enum CategoryType {
+    INCOME
+    EXPENSE
+  }
+
+  enum BudgetType {
+    EXPENSE
+    INCOME
+  }
+
+  enum BudgetPeriod {
+    DAILY
+    WEEKLY
+    MONTHLY
+  }
+
+  enum SavingType {
+    GOAL
+    PERIODIC
+  }
+
+  enum SavingPeriod {
+    WEEKLY
+    MONTHLY
+    YEARLY
+  }
+
+  enum SavingStatus {
+    ACTIVE
+    COMPLETED
+    WITHDRAWN
+  }
+
+  enum ChatIntent {
+    HELP
+    OVERVIEW
+    SPENDING_ANALYSIS
+    BUDGET_STATUS
+    SAVINGS_STATUS
+    DEBT_STATUS
+    WALLET_STATUS
+    RECENT_TRANSACTIONS
+    PREDICTION
+    GENERAL
+  }
+}
+
+package "DTOs" {
+  class RegisterRequest <<dto>> {
+    -username: String
+    -password: String
+    -fullname: String
+    -birthday: LocalDate
+    -sex: Sex
+    -address: String
+    -email: String
+    -phone: String
+  }
+
+  class LoginRequest <<dto>> {
+    -login: String
+    -password: String
+  }
+
+  class ForgotPasswordRequest <<dto>> {
+    -email: String
+  }
+
+  class VerifyOtpRequest <<dto>> {
+    -email: String
+    -otp: String
+  }
+
+  class ResetPasswordRequest <<dto>> {
+    -email: String
+    -otp: String
+    -newPassword: String
+  }
+
+  class LoginResponse <<dto>> {
+    -accessToken: String
+    -userId: String
+    -username: String
+    -role: Role
+  }
+
+  class WalletRequest <<dto>> {
+    -type: String
+    -name: String
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class WalletResponse <<dto>> {
+    -id: String
+    -name: String
+    -currency: String
+    -type: String
+    -balance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class TransactionRequest <<dto>> {
+    -type: String
+    -amount: BigDecimal
+    -description: String
+    -walletId: String
+    -toWalletId: String
+    -categoryId: String
+  }
+
+  class CategoryRequest <<dto>> {
+    -name: String
+    -type: String
+  }
+
+  class SubCategoryRequest <<dto>> {
+    -name: String
+    -categoryId: String
+  }
+
+  class BudgetRequest <<dto>> {
+    -budget_name: String
+    -type: String
+    -amount: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: String
+    -categoryIds: List<String>
+  }
+
+  class CategoryResponse <<dto>> {
+    -id: String
+    -name: String
+    -isDefault: Boolean
+  }
+
+  class BudgetResponse <<dto>> {
+    -id: String
+    -budget_name: String
+    -type: String
+    -amount: double
+    -spent: double
+    -progress: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: String
+    -walletId: String
+  }
+
+  class SavingRequest <<dto>> {
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -type: String
+    -category: String
+    -targetDate: LocalDate
+    -period: String
+  }
+
+  class SavingTransactionRequest <<dto>> {
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+    -walletId: String
+  }
+
+  class WithdrawSavingRequest <<dto>> {
+    -amount: BigDecimal
+    -walletId: String
+    -note: String
+  }
+
+  class SavingResponse <<dto>> {
+    -id: String
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -progress: double
+    -type: String
+    -category: String
+    -targetDate: LocalDate
+    -period: String
+    -walletId: String
+  }
+
+  class SavingTransactionResponse <<dto>> {
+    -id: Long
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+    -walletId: String
+  }
+
+  class DebtRequest <<dto>> {
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -targetDate: LocalDate
+    -Note: String
+    -walletId: String
+  }
+
+  class DebtPaymentRequest <<dto>> {
+    -title: String
+    -amount: BigDecimal
+    -walletId: String
+  }
+
+  class DebtResponse <<dto>> {
+    -id: Long
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -paidAmount: BigDecimal
+    -remainingAmount: BigDecimal
+    -createdDate: LocalDateTime
+    -targetDate: LocalDate
+    -Note: String
+    -walletId: String
+  }
+
+  class DebtPaymentResponse <<dto>> {
+    -id: Long
+    -title: String
+    -amount: BigDecimal
+    -paymentDate: LocalDateTime
+    -walletId: String
+    -debtId: Long
+  }
+
+  class AdminUserResponse <<dto>> {
+    -id: String
+    -username: String
+    -fullname: String
+    -email: String
+    -phone: String
+    -role: String
+    -isActived: Boolean
+    -birthday: LocalDate
+    -sex: String
+    -address: String
+    -joinedAt: LocalDateTime
+    -walletCount: int
+    -transactionCount: int
+    -totalIncome: BigDecimal
+    -totalExpense: BigDecimal
+  }
+
+  class AdminTransactionResponse <<dto>> {
+    -id: String
+    -type: String
+    -amount: BigDecimal
+    -description: String
+    -categoryName: String
+    -createdAt: LocalDateTime
+    -username: String
+    -walletName: String
+    -walletId: String
+    -accountId: String
+  }
+
+  class AdminStatsResponse <<dto>> {
+    -totalUsers: long
+    -totalAdmins: long
+    -totalWallets: long
+    -totalTransactions: long
+    -totalDebts: long
+    -totalSavings: long
+    -totalRevenue: BigDecimal
+    -totalExpense: BigDecimal
+    -avgTransaction: BigDecimal
+  }
+
+  class ChatRequest <<dto>> {
+    -message: String
+    -activeTab: String
+  }
+
+  class "ChatRequest.HistoryItem" as ChatHistoryItem <<dto>> {
+    -role: String
+    -text: String
+  }
+
+  class ChatResponse <<dto>> {
+    -reply: String
+    -action: String
+    -refreshScopes: List<String>
+  }
+}
+
+JwtAuthenticationFilter --|> OncePerRequestFilter
+
+AuthController --> AuthService
+WalletController --> WalletService
+TransactionController --> TransactionService
+CategoryController --> CategoryService
+SubCategoryController --> SubCategoryService
+BudgetController --> BudgetService
+BudgetController --> BudgetMapper
+SavingController --> SavingService
+SavingController --> SavingMapper
+DebtController --> DebtService
+DebtController --> WalletRepository
+DebtController --> DebtMapper
+DebtController --> PaymentMapper
+AdminController --> AdminService
+AdminController --> WalletRepository
+AdminController --> DebtRepository
+AdminController --> SavingRepository
+AiController --> AiService
+
+UserController ..> Account : reads principal
+
+AuthService --> AccountRepository
+AuthService --> InfoUserRepository
+AuthService --> OtpRepository
+AuthService --> JwtService
+AuthService --> EmailService
+AuthService ..> OtpGenerator
+AuthService ..> HashUtil
+
+JwtAuthenticationFilter --> JwtService
+JwtAuthenticationFilter --> AccountRepository
+SecurityConfig --> JwtAuthenticationFilter
+
+WalletService --> WalletRepository
+WalletService --> AccountRepository
+TransactionService --> TransactionRepository
+TransactionService --> WalletRepository
+TransactionService --> CategoryRepository
+CategoryService --> CategoryRepository
+SubCategoryService --> SubCategoryRepository
+SubCategoryService --> CategoryRepository
+BudgetService --> BudgetRepository
+BudgetService --> WalletRepository
+BudgetService --> CategoryRepository
+BudgetService --> TransactionRepository
+SavingService --> SavingRepository
+SavingService --> SavingTransactionRepository
+SavingService --> WalletRepository
+SavingService --> TransactionRepository
+DebtService --> DebtRepository
+DebtService --> DebtPaymentRepository
+DebtService --> WalletRepository
+DebtService --> TransactionRepository
+DebtService --> CategoryRepository
+DebtService --> AccountRepository
+AdminService --> AccountRepository
+AdminService --> WalletRepository
+AdminService --> TransactionRepository
+AdminService --> DebtRepository
+AdminService --> SavingRepository
+AiService --> TransactionAIService
+AiService --> AiFinanceSnapshotService
+AiService --> AiAnalyzerService
+AiService --> AiPredictService
+AiService --> GeminiService
+TransactionAIService --> GeminiService
+TransactionAIService --> WalletRepository
+TransactionAIService --> TransactionRepository
+TransactionAIService --> CategoryRepository
+TransactionAIService --> AccountRepository
+AiFinanceSnapshotService --> WalletRepository
+AiFinanceSnapshotService --> TransactionRepository
+AiFinanceSnapshotService --> DebtRepository
+AiFinanceSnapshotService --> SavingRepository
+AiFinanceSnapshotService --> BudgetService
+AiAnalyzerService --> TransactionRepository
+
+Account "1" *-- "0..1" InfoUser : infoUser
+Account "1" -- "0..*" Wallet : owns
+Account "1" -- "0..*" Category : owns
+Account "1" -- "0..*" SubCategory : owns
+Wallet "1" -- "0..*" Transaction : source
+Transaction "0..*" --> "0..1" Wallet : toWallet
+Category "1" -- "0..*" Transaction : categorizes
+Category "1" -- "0..*" SubCategory : contains
+Wallet "1" -- "0..*" Budget : budgets
+Budget "0..*" -- "0..*" Category : tracks
+Wallet "1" -- "0..*" Saving : funds
+Saving "1" *-- "0..*" SavingTransaction : records
+SavingTransaction "0..*" --> "1" Wallet : sourceWallet
+Wallet "1" -- "0..*" Debt : linked
+Debt "1" *-- "0..*" DebtPayment : payments
+DebtPayment "0..*" --> "1" Wallet : paymentWallet
+FinanceSnapshot "1" o-- "0..*" Wallet
+FinanceSnapshot "1" o-- "0..*" Budget
+FinanceSnapshot "1" o-- "0..*" Debt
+FinanceSnapshot "1" o-- "0..*" Saving
+FinanceSnapshot "1" o-- "0..*" Transaction
+FinanceSnapshot "1" o-- "0..*" CategorySpend
+ChatRequest "1" o-- "0..*" ChatHistoryItem : history
+BudgetResponse "1" o-- "0..*" CategoryResponse : categories
+SavingResponse "1" o-- "0..*" SavingTransactionResponse : transactions
+
+Account ..> Role
+InfoUser ..> Sex
+Wallet ..> WalletType
+Transaction ..> TransactionType
+Category ..> CategoryType
+Budget ..> BudgetType
+Budget ..> BudgetPeriod
+Saving ..> SavingType
+Saving ..> SavingPeriod
+Saving ..> SavingStatus
+AiService ..> ChatIntent
+@enduml

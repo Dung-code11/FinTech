@@ -55,7 +55,7 @@ const ForgotPasswordPage = () => {
     <div className={styles.forgotPage}>
       <div className={styles.forgotCard}>
         <div className={styles.header}>
-          <img src="/logo.png" alt="FinTech" className={styles.logo} />
+          <img src="/fintrack-logo.svg" alt="FinTrack" className={styles.logo} />
           <h1>Quên mật khẩu?</h1>
           <p className={styles.subtitle}>
             Nhập email của bạn để nhận mã xác thực OTP

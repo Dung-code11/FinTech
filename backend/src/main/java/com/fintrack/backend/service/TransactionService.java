@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,7 +62,7 @@ public class TransactionService {
         t.setAmount(req.amount);
         t.setDescription(req.description);
         t.setWallet(wallet);
-        t.setCreatedAt(LocalDateTime.now());
+        t.setCreatedAt(resolveCreatedAt(req.createdAt, null));
 
         // category
         handleCategory(req, t, account);
@@ -86,6 +89,7 @@ public class TransactionService {
         old.setAmount(req.amount);
         old.setDescription(req.description);
         old.setWallet(wallet);
+        old.setCreatedAt(resolveCreatedAt(req.createdAt, old.getCreatedAt()));
 
         handleCategory(req, old, account);
 
@@ -241,6 +245,20 @@ public class TransactionService {
         } else {
             t.setCategory(null);
         }
+    }
+
+    private LocalDateTime resolveCreatedAt(LocalDate selectedDate, LocalDateTime fallback){
+        if(selectedDate == null){
+            return fallback != null
+                    ? fallback
+                    : LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+        }
+
+        LocalTime time = fallback != null
+                ? fallback.toLocalTime()
+                : LocalTime.now();
+
+        return selectedDate.atTime(time).truncatedTo(ChronoUnit.SECONDS);
     }
 
     // ================= MONEY LOGIC =================

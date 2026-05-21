@@ -10,7 +10,7 @@ const Testimonials = () => {
       name: 'Nguyễn Văn An',
       role: 'Nhân viên văn phòng',
       avatar: '/images/avatar-1.jpg',
-      content: 'FinTech giúp tôi tiết kiệm được 30% thu nhập hàng tháng. Giao diện đẹp, dễ sử dụng và báo cáo rất chi tiết.',
+      content: 'FinTrack giúp tôi tiết kiệm được 30% thu nhập hàng tháng. Giao diện đẹp, dễ sử dụng và báo cáo rất chi tiết.',
       rating: 5,
       saved: '12.5 triệu',
       since: '2023'
@@ -59,10 +59,10 @@ const Testimonials = () => {
           <span className={styles.sectionBadge}>Đánh giá</span>
           <h2 className={styles.sectionTitle}>
             Khách hàng nói gì về{' '}
-            <span className={styles.gradientText}>FinTech</span>
+            <span className={styles.gradientText}>FinTrack</span>
           </h2>
           <p className={styles.sectionDescription}>
-            Hàng ngàn người dùng đã cải thiện tình hình tài chính của họ với FinTech.
+            Hàng ngàn người dùng đã cải thiện tình hình tài chính của họ với FinTrack.
             Đọc những câu chuyện thành công dưới đây.
           </p>
         </div>

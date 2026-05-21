@@ -102,7 +102,7 @@ public class AiService {
 
     private String buildHelpReply() {
         return """
-                Mình có thể hỗ trợ ngay trong FinTech:
+                Mình có thể hỗ trợ ngay trong FinTrack:
                 - Ghi giao dịch: "ăn trưa 45k", "nhận lương 15tr"
                 - Xem tổng quan tài chính tháng này
                 - Xem số dư ví và hạn mức thẻ
@@ -129,7 +129,7 @@ public class AiService {
                 .collect(Collectors.joining("\n"));
 
         String prompt = """
-                Bạn là trợ lý tài chính cho ứng dụng FinTech.
+                Bạn là trợ lý tài chính cho ứng dụng FinTrack.
                 Chỉ trả lời trong phạm vi quản lý tài chính cá nhân, giao dịch, ví, ngân sách, tiết kiệm và nợ.
                 Trả lời ngắn gọn, thực tế, có thể dùng bullet nếu cần.
 

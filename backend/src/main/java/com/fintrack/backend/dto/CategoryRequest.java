@@ -9,4 +9,8 @@ public class CategoryRequest {
 
     @NotBlank
     public String type; // INCOME | EXPENSE
+
+    public Boolean isDefault;
+
+    public String ownerId;
 }

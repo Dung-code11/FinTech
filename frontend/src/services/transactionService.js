@@ -1,4 +1,11 @@
 import API_ENDPOINTS from '../config/api';
+import {
+  extractDateKey,
+  formatDateKeyForDisplay,
+  formatLocalDate,
+  formatLocalTime,
+  getSortableTimestamp
+} from '../utils/date';
 
 const handleResponse = async (response) => {
   const responseText = await response.text();
@@ -40,7 +47,7 @@ const getErrorMessage = (data, fallback) => {
 const createHeaders = (includeAuth = true) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    Accept: 'application/json'
   };
 
   if (includeAuth) {
@@ -51,6 +58,58 @@ const createHeaders = (includeAuth = true) => {
   }
 
   return headers;
+};
+
+const normalizeSearchValue = (value) =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .trim();
+
+const getDisplayAmount = (type, amount) => {
+  if (type === 'EXPENSE') {
+    return `-${amount.toLocaleString()} VND`;
+  }
+
+  if (type === 'INCOME') {
+    return `+${amount.toLocaleString()} VND`;
+  }
+
+  return `${amount.toLocaleString()} VND`;
+};
+
+const iconRules = [
+  { patterns: ['an', 'uong', 'buffet', 'lau', 'com', 'banh', 'tra sua', 'mixue', 'cafe'], icon: '🍜' },
+  { patterns: ['xang', 'do xang', 'di chuyen', 'xe', 'bus', 'grab', 'taxi'], icon: '⛽' },
+  { patterns: ['mua sam', 'shopping', 'online', 'shopee', 'lazada'], icon: '🛍️' },
+  { patterns: ['giai tri', 'netflix', 'game', 'phim', 'karaoke'], icon: '🎮' },
+  { patterns: ['luong', 'thu nhap', 'thuong', 'hoc bong', 'du an'], icon: '💼' },
+  { patterns: ['me cho', 'bo cho', 'cho tien', 'qua tang', 'mung'], icon: '🎁' },
+  { patterns: ['saving', 'tiet kiem', 'withdraw saving'], icon: '🏦' },
+  { patterns: ['tra no', 'vay', 'debt'], icon: '💳' },
+  { patterns: ['dau tu', 'crypto', 'bitcoin', 'chung khoan'], icon: '📈' },
+  { patterns: ['nha', 'dien', 'nuoc', 'wifi', 'internet', 'phong tro'], icon: '🏠' },
+  { patterns: ['suc khoe', 'benh vien', 'thuoc', 'kham'], icon: '💊' },
+  { patterns: ['hoc', 'sach', 'khoa hoc', 'hoc phi'], icon: '📚' }
+];
+
+const getTransactionIcon = ({ type, categoryName, description }) => {
+  if (type === 'TRANSFER') return '🔄';
+
+  const haystack = normalizeSearchValue(`${categoryName || ''} ${description || ''}`);
+  const matchedRule = iconRules.find((rule) =>
+    rule.patterns.some((pattern) => haystack.includes(pattern))
+  );
+
+  if (matchedRule) {
+    return matchedRule.icon;
+  }
+
+  if (type === 'EXPENSE') return '💸';
+  if (type === 'INCOME') return '💰';
+  return '📄';
 };
 
 export const transactionService = {
@@ -64,35 +123,22 @@ export const transactionService = {
       const data = await handleResponse(response);
 
       if (!response.ok) {
-        throw new Error(getErrorMessage(data, 'Không thể lấy danh sách giao dịch'));
+        throw new Error(getErrorMessage(data, 'Khong the lay danh sach giao dich'));
       }
 
       if (data !== null && !Array.isArray(data)) {
-        throw new Error('Dữ liệu giao dịch không hợp lệ');
+        throw new Error('Du lieu giao dich khong hop le');
       }
-
-      const transactions = Array.isArray(data) ? data : [];
-
-      console.log(
-        'Transactions after processing:',
-        transactions.map((transaction) => ({
-          id: transaction.id,
-          walletId: transaction.wallet?.id || transaction.walletId,
-          walletName: transaction.wallet?.name,
-          description: transaction.description,
-          amount: transaction.amount
-        }))
-      );
 
       return {
         success: true,
-        data: transactions
+        data: Array.isArray(data) ? data : []
       };
     } catch (error) {
       console.error('Get all transactions error:', error);
       return {
         success: false,
-        error: error.message || 'Không thể lấy danh sách giao dịch',
+        error: error.message || 'Khong the lay danh sach giao dich',
         data: []
       };
     }
@@ -108,11 +154,11 @@ export const transactionService = {
       const data = await handleResponse(response);
 
       if (!response.ok) {
-        throw new Error(getErrorMessage(data, 'Không thể lấy thông tin giao dịch'));
+        throw new Error(getErrorMessage(data, 'Khong the lay thong tin giao dich'));
       }
 
       if (!data || Array.isArray(data)) {
-        throw new Error('Dữ liệu giao dịch không hợp lệ');
+        throw new Error('Du lieu giao dich khong hop le');
       }
 
       return {
@@ -123,7 +169,7 @@ export const transactionService = {
       console.error('Get transaction by id error:', error);
       return {
         success: false,
-        error: error.message || 'Không thể lấy thông tin giao dịch',
+        error: error.message || 'Khong the lay thong tin giao dich',
         data: null
       };
     }
@@ -140,11 +186,11 @@ export const transactionService = {
       const data = await handleResponse(response);
 
       if (!response.ok) {
-        throw new Error(getErrorMessage(data, 'Không thể tạo giao dịch'));
+        throw new Error(getErrorMessage(data, 'Khong the tao giao dich'));
       }
 
       if (!data || Array.isArray(data)) {
-        throw new Error('Phản hồi tạo giao dịch không hợp lệ');
+        throw new Error('Phan hoi tao giao dich khong hop le');
       }
 
       return {
@@ -155,7 +201,7 @@ export const transactionService = {
       console.error('Create transaction error:', error);
       return {
         success: false,
-        error: error.message || 'Không thể tạo giao dịch'
+        error: error.message || 'Khong the tao giao dich'
       };
     }
   },
@@ -171,11 +217,11 @@ export const transactionService = {
       const data = await handleResponse(response);
 
       if (!response.ok) {
-        throw new Error(getErrorMessage(data, 'Không thể cập nhật giao dịch'));
+        throw new Error(getErrorMessage(data, 'Khong the cap nhat giao dich'));
       }
 
       if (!data || Array.isArray(data)) {
-        throw new Error('Phản hồi cập nhật giao dịch không hợp lệ');
+        throw new Error('Phan hoi cap nhat giao dich khong hop le');
       }
 
       return {
@@ -186,7 +232,7 @@ export const transactionService = {
       console.error('Update transaction error:', error);
       return {
         success: false,
-        error: error.message || 'Không thể cập nhật giao dịch'
+        error: error.message || 'Khong the cap nhat giao dich'
       };
     }
   },
@@ -201,19 +247,19 @@ export const transactionService = {
       const data = await handleResponse(response);
 
       if (!response.ok) {
-        throw new Error(getErrorMessage(data, 'Không thể xóa giao dịch'));
+        throw new Error(getErrorMessage(data, 'Khong the xoa giao dich'));
       }
 
       return {
         success: true,
-        message: getErrorMessage(data, 'Xóa giao dịch thành công'),
+        message: getErrorMessage(data, 'Xoa giao dich thanh cong'),
         data
       };
     } catch (error) {
       console.error('Delete transaction error:', error);
       return {
         success: false,
-        error: error.message || 'Không thể xóa giao dịch'
+        error: error.message || 'Khong the xoa giao dich'
       };
     }
   },
@@ -221,23 +267,20 @@ export const transactionService = {
   formatTransaction(transaction) {
     if (!transaction) return null;
 
-    console.log('Raw transaction before format:', transaction);
-
     const type = transaction.type || 'EXPENSE';
     const amount = Number(transaction.amount) || 0;
     const walletId = transaction.wallet?.id || transaction.walletId || null;
+    const walletName = transaction.wallet?.name || transaction.walletName || '';
     const toWalletId = transaction.toWallet?.id || transaction.toWalletId || null;
+    const toWalletName = transaction.toWallet?.name || transaction.toWalletName || '';
     const categoryId = transaction.category?.id || transaction.categoryId || null;
     const categoryName =
       transaction.category?.categoryName ||
       transaction.category?.name ||
       transaction.categoryName ||
-      'Khác';
+      'Khac';
     const createdAt = transaction.createdAt || new Date().toISOString();
-
-    console.log('Extracted walletId:', walletId);
-    console.log('Extracted categoryId:', categoryId);
-    console.log('Extracted categoryName:', categoryName);
+    const dateKey = extractDateKey(createdAt);
 
     return {
       id: transaction.id,
@@ -245,20 +288,26 @@ export const transactionService = {
       amount,
       description: transaction.description || '',
       walletId,
+      walletName,
       toWalletId,
+      toWalletName,
       categoryId,
       categoryName,
       createdAt,
-      displayAmount:
-        type === 'EXPENSE'
-          ? `-${amount.toLocaleString()}₫`
-          : `+${amount.toLocaleString()}₫`,
-      displayDate: new Date(createdAt).toLocaleDateString('vi-VN'),
-      displayTime: new Date(createdAt).toLocaleTimeString('vi-VN', {
+      dateKey,
+      displayAmount: getDisplayAmount(type, amount),
+      displayDate: dateKey
+        ? formatDateKeyForDisplay(dateKey, 'vi-VN')
+        : formatLocalDate(createdAt, 'vi-VN'),
+      displayTime: formatLocalTime(createdAt, 'vi-VN', {
         hour: '2-digit',
         minute: '2-digit'
       }),
-      icon: type === 'EXPENSE' ? '💸' : '💰'
+      icon: getTransactionIcon({
+        type,
+        categoryName,
+        description: transaction.description || ''
+      })
     };
   },
 
@@ -268,35 +317,35 @@ export const transactionService = {
     const groups = {};
 
     transactions.forEach((transaction) => {
-      const date = transaction.createdAt
-        ? new Date(transaction.createdAt).toISOString().split('T')[0]
-        : 'unknown';
+      const dateKey = transaction.dateKey || extractDateKey(transaction.createdAt) || 'unknown';
 
-      if (!groups[date]) {
-        groups[date] = [];
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
       }
 
-      groups[date].push(transaction);
+      groups[dateKey].push(transaction);
     });
 
     return Object.entries(groups)
-      .sort((a, b) => {
-        if (a[0] === 'unknown') return 1;
-        if (b[0] === 'unknown') return -1;
-        return new Date(b[0]) - new Date(a[0]);
+      .sort((first, second) => {
+        if (first[0] === 'unknown') return 1;
+        if (second[0] === 'unknown') return -1;
+        return second[0].localeCompare(first[0]);
       })
       .map(([date, groupedTransactions]) => ({
         date,
         displayDate:
           date !== 'unknown'
-            ? new Date(date).toLocaleDateString('vi-VN', {
+            ? formatDateKeyForDisplay(date, 'vi-VN', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
               })
-            : 'Không xác định',
-        transactions: groupedTransactions,
+            : 'Khong xac dinh',
+        transactions: [...groupedTransactions].sort(
+          (first, second) => getSortableTimestamp(second.createdAt) - getSortableTimestamp(first.createdAt)
+        ),
         total: groupedTransactions.reduce((sum, transaction) => {
           if (transaction.type === 'EXPENSE') return sum - (transaction.amount || 0);
           if (transaction.type === 'INCOME') return sum + (transaction.amount || 0);
@@ -308,19 +357,9 @@ export const transactionService = {
   filterTransactions(transactions, filters) {
     if (!transactions || !Array.isArray(transactions)) return [];
 
-    console.log('Filtering with:', filters);
-    console.log(
-      'All transactions wallet/category:',
-      transactions.map((transaction) => ({
-        id: transaction.id,
-        walletId: transaction.walletId,
-        categoryId: transaction.categoryId,
-        categoryName: transaction.categoryName,
-        description: transaction.description
-      }))
-    );
+    const query = normalizeSearchValue(filters.searchQuery);
 
-    const filtered = transactions.filter((transaction) => {
+    return transactions.filter((transaction) => {
       if (filters.walletId && filters.walletId !== 'all' && transaction.walletId !== filters.walletId) {
         return false;
       }
@@ -341,37 +380,45 @@ export const transactionService = {
         }
       }
 
-      if (filters.startDate && transaction.createdAt) {
-        const transactionDate = new Date(transaction.createdAt).toISOString().split('T')[0];
-        if (transactionDate < filters.startDate) return false;
-      }
+      const transactionDate = transaction.dateKey || extractDateKey(transaction.createdAt);
 
-      if (filters.endDate && transaction.createdAt) {
-        const transactionDate = new Date(transaction.createdAt).toISOString().split('T')[0];
-        if (transactionDate > filters.endDate) return false;
-      }
-
-      if (filters.minAmount && transaction.amount < filters.minAmount) {
+      if (filters.startDate && transactionDate && transactionDate < filters.startDate) {
         return false;
       }
 
-      if (filters.maxAmount && transaction.amount > filters.maxAmount) {
+      if (filters.endDate && transactionDate && transactionDate > filters.endDate) {
         return false;
       }
 
-      if (filters.searchQuery) {
-        const query = filters.searchQuery.toLowerCase();
-        const description = transaction.description?.toLowerCase() || '';
-        const categoryName = transaction.categoryName?.toLowerCase() || '';
-        return description.includes(query) || categoryName.includes(query);
+      if (filters.minAmount !== null && filters.minAmount !== undefined && transaction.amount < filters.minAmount) {
+        return false;
+      }
+
+      if (filters.maxAmount !== null && filters.maxAmount !== undefined && transaction.amount > filters.maxAmount) {
+        return false;
+      }
+
+      if (query) {
+        const searchableValues = [
+          transaction.description,
+          transaction.categoryName,
+          transaction.walletName,
+          transaction.toWalletName,
+          transaction.type,
+          transaction.amount
+        ];
+
+        const matched = searchableValues.some((value) =>
+          normalizeSearchValue(value).includes(query)
+        );
+
+        if (!matched) {
+          return false;
+        }
       }
 
       return true;
     });
-
-    console.log('Filtered result count:', filtered.length);
-    console.log('Filtered result:', filtered);
-    return filtered;
   },
 
   calculateTotals(transactions) {

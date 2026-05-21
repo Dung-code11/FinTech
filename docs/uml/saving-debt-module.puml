@@ -1,0 +1,334 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Controllers" {
+  class SavingController <<controller>> {
+    -savingService: SavingService
+    +create(walletId: String, request: SavingRequest): SavingResponse
+    +getByWallet(walletId: String): List<SavingResponse>
+    +deposit(savingId: String, request: SavingTransactionRequest): SavingResponse
+    +withdraw(savingId: String, request: WithdrawSavingRequest): SavingResponse
+  }
+
+  class DebtController <<controller>> {
+    -debtService: DebtService
+    -walletRepository: WalletRepository
+    +create(dto: DebtRequest): DebtResponse
+    +getAll(): List<DebtResponse>
+    +getOne(id: Long): DebtResponse
+    +pay(id: Long, dto: DebtPaymentRequest, account: Account): DebtPaymentResponse
+    +payments(id: Long): List<DebtPaymentResponse>
+  }
+}
+
+package "Services" {
+  class SavingService <<service>> {
+    -savingRepository: SavingRepository
+    -transactionRepository: SavingTransactionRepository
+    -walletRepository: WalletRepository
+    -transactionRepo: TransactionRepository
+    +createSaving(walletId: String, req: SavingRequest): Saving
+    +getByWallet(walletId: String): List<Saving>
+    +addMoney(savingId: String, req: SavingTransactionRequest): Saving
+    +withdraw(savingId: String, req: WithdrawSavingRequest): Saving
+  }
+
+  class DebtService <<service>> {
+    -debtRepository: DebtRepository
+    -paymentRepository: DebtPaymentRepository
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -categoryRepository: CategoryRepository
+    -accountRepository: AccountRepository
+    +createDebt(debt: Debt): Debt
+    +getAll(): List<Debt>
+    +getById(id: Long): Debt
+    +payDebt(debtId: Long, payment: DebtPayment, username: String): DebtPayment
+    +getPayments(debtId: Long): List<DebtPayment>
+    -createTransactionForDebtPayment(wallet: Wallet, debt: Debt, amount: BigDecimal, note: String, account: Account): void
+    -findOrCreateCategory(categoryName: String, type: CategoryType, account: Account): Category
+  }
+
+  class SavingMapper <<utility>> {
+    +toDTO(saving: Saving): SavingResponse
+    +toTransactionDTO(tx: SavingTransaction): SavingTransactionResponse
+  }
+
+  class DebtMapper <<utility>> {
+    +toEntity(dto: DebtRequest, wallet: Wallet): Debt
+    +toDTO(debt: Debt): DebtResponse
+  }
+
+  class PaymentMapper <<utility>> {
+    +toEntity(dto: DebtPaymentRequest, wallet: Wallet, debt: Debt): DebtPayment
+    +toDTO(payment: DebtPayment): DebtPaymentResponse
+  }
+}
+
+package "Repositories" {
+  interface SavingRepository <<repository>> {
+    +findByWallet_Id(walletId: String): List<Saving>
+  }
+
+  interface SavingTransactionRepository <<repository>> {
+  }
+
+  interface DebtRepository <<repository>> {
+  }
+
+  interface DebtPaymentRepository <<repository>> {
+    +findByDebtId(debtId: Long): List<DebtPayment>
+  }
+
+  interface WalletRepository <<repository>> {
+    +findById(walletId: String): Optional<Wallet>
+  }
+
+  interface TransactionRepository <<repository>> {
+  }
+
+  interface CategoryRepository <<repository>> {
+    +findByOwnerAndType(account: Account, type: CategoryType): List<Category>
+    +findByCategoryNameAndIsDefaultTrue(name: String): Optional<Category>
+  }
+
+  interface AccountRepository <<repository>> {
+    +findByUsername(username: String): Optional<Account>
+  }
+}
+
+package "Domain" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+  }
+
+  class Wallet <<entity>> {
+    -id: String
+    -type: WalletType
+    -currency: String
+    -initialBalance: BigDecimal
+    -unpaidBalance: BigDecimal
+  }
+
+  class Category <<entity>> {
+    -id: String
+    -categoryName: String
+    -type: CategoryType
+    -isDefault: Boolean
+  }
+
+  class Transaction <<entity>> {
+    -id: String
+    -type: TransactionType
+    -amount: BigDecimal
+    -description: String
+    -createdAt: LocalDateTime
+  }
+
+  class Saving <<entity>> {
+    -id: String
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -type: SavingType
+    -category: String
+    -targetDate: LocalDate
+    -period: SavingPeriod
+    -status: SavingStatus
+  }
+
+  class SavingTransaction <<entity>> {
+    -id: Long
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+  }
+
+  class Debt <<entity>> {
+    -id: Long
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -remainingAmount: BigDecimal
+    -createdDate: LocalDateTime
+    -targetDate: LocalDate
+    -Note: String
+    +prePersist(): void
+  }
+
+  class DebtPayment <<entity>> {
+    -id: Long
+    -title: String
+    -amount: BigDecimal
+    -paymentDate: LocalDateTime
+    -Note: String
+    +prePersist(): void
+  }
+
+  enum SavingType {
+    GOAL
+    PERIODIC
+  }
+
+  enum SavingPeriod {
+    WEEKLY
+    MONTHLY
+    YEARLY
+  }
+
+  enum SavingStatus {
+    ACTIVE
+    COMPLETED
+    WITHDRAWN
+  }
+
+  enum WalletType {
+    CASH
+    CREDIT
+  }
+
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  enum CategoryType {
+    INCOME
+    EXPENSE
+  }
+}
+
+package "DTOs" {
+  class SavingRequest <<dto>> {
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -type: String
+    -category: String
+    -targetDate: LocalDate
+    -period: String
+  }
+
+  class SavingTransactionRequest <<dto>> {
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+    -walletId: String
+  }
+
+  class WithdrawSavingRequest <<dto>> {
+    -amount: BigDecimal
+    -walletId: String
+    -note: String
+  }
+
+  class SavingResponse <<dto>> {
+    -id: String
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -progress: double
+    -type: String
+    -category: String
+    -targetDate: LocalDate
+    -period: String
+    -walletId: String
+  }
+
+  class SavingTransactionResponse <<dto>> {
+    -id: Long
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+    -walletId: String
+  }
+
+  class DebtRequest <<dto>> {
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -targetDate: LocalDate
+    -Note: String
+    -walletId: String
+  }
+
+  class DebtPaymentRequest <<dto>> {
+    -title: String
+    -amount: BigDecimal
+    -walletId: String
+  }
+
+  class DebtResponse <<dto>> {
+    -id: Long
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -paidAmount: BigDecimal
+    -remainingAmount: BigDecimal
+    -createdDate: LocalDateTime
+    -targetDate: LocalDate
+    -Note: String
+    -walletId: String
+  }
+
+  class DebtPaymentResponse <<dto>> {
+    -id: Long
+    -title: String
+    -amount: BigDecimal
+    -paymentDate: LocalDateTime
+    -walletId: String
+    -debtId: Long
+  }
+}
+
+SavingController --> SavingService
+SavingController --> SavingMapper
+DebtController --> DebtService
+DebtController --> WalletRepository
+DebtController --> DebtMapper
+DebtController --> PaymentMapper
+
+SavingService --> SavingRepository
+SavingService --> SavingTransactionRepository
+SavingService --> WalletRepository
+SavingService --> TransactionRepository
+
+DebtService --> DebtRepository
+DebtService --> DebtPaymentRepository
+DebtService --> WalletRepository
+DebtService --> TransactionRepository
+DebtService --> CategoryRepository
+DebtService --> AccountRepository
+
+SavingMapper ..> SavingResponse
+SavingMapper ..> SavingTransactionResponse
+DebtMapper ..> DebtResponse
+PaymentMapper ..> DebtPaymentResponse
+
+Wallet "1" -- "0..*" Saving : funds
+Saving "1" *-- "0..*" SavingTransaction : records
+SavingTransaction "0..*" --> "1" Wallet : sourceWallet
+
+Wallet "1" -- "0..*" Debt : linked
+Debt "1" *-- "0..*" DebtPayment : payments
+DebtPayment "0..*" --> "1" Wallet : paymentWallet
+
+Wallet "1" -- "0..*" Transaction : ledger
+Category "1" -- "0..*" Transaction : category
+Account "1" -- "0..*" Category : owns
+
+Saving ..> SavingType
+Saving ..> SavingPeriod
+Saving ..> SavingStatus
+Wallet ..> WalletType
+Transaction ..> TransactionType
+Category ..> CategoryType
+
+SavingResponse "1" o-- "0..*" SavingTransactionResponse : transactions
+@enduml

@@ -70,9 +70,9 @@ const LoginPage = () => {
     <div className={styles.loginPage}>
       <div className={styles.loginCard}>
         <div className={styles.header}>
-          <img src="/logo.png" alt="FinTech" className={styles.logo} />
+          <img src="/fintrack-logo.svg" alt="FinTrack" className={styles.logo} />
           <h1>Đăng nhập</h1>
-          <p className={styles.subtitle}>Chào mừng bạn trở lại với FinTech</p>
+          <p className={styles.subtitle}>Chào mừng bạn trở lại với FinTrack</p>
         </div>
 
         {errors.submit && (

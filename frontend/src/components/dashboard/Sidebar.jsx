@@ -64,7 +64,7 @@ const Sidebar = ({ isOpen, onToggle, activeTab, onTabChange }) => {
       <div className={styles.sidebarHeader}>
         <div className={styles.logo} onClick={!isOpen ? onToggle : undefined}>
           <Wallet size={24} />
-          {isOpen && <span>FinTech</span>}
+          {isOpen && <span>FinTrack</span>}
         </div>
 
         {isOpen && (
@@ -96,7 +96,7 @@ const Sidebar = ({ isOpen, onToggle, activeTab, onTabChange }) => {
             <div className={styles.userDetails}>
               <p className={styles.userName}>{getDisplayName()}</p>
               <p className={styles.userEmail}>
-                {user?.email || "user@fintech.com"}
+                {user?.email || "user@fintrack.com"}
               </p>
               {isAdmin() && <span className={styles.adminBadge}>Admin</span>}
             </div>

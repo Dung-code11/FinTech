@@ -13,7 +13,9 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
-# Let Jenkins user talk to the Docker socket (host should share the same group id if needed).
+# Let Jenkins user talk to the Docker socket.
+# Note: The docker.sock group id comes from the host, so docker group gid inside the container
+# may not match. We also add supplemental group via docker-compose `group_add` (DOCKER_GID).
 RUN usermod -aG docker jenkins || true
 
 USER jenkins

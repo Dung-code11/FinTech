@@ -73,7 +73,7 @@ const Features = () => {
             <span className={styles.gradientText}>quản lý tài chính</span>
           </h2>
           <p className={styles.sectionDescription}>
-            FinTech cung cấp đầy đủ công cụ giúp bạn kiểm soát dòng tiền, 
+            FinTrack cung cấp đầy đủ công cụ giúp bạn kiểm soát dòng tiền, 
             tiết kiệm thông minh và đầu tư hiệu quả.
           </p>
         </div>

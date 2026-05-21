@@ -612,7 +612,7 @@ const SettingsPage = ({ settings, onSettingsChange, onNavigateToTab }) => {
               <div className={styles.about}>
                 <h3>Về ứng dụng</h3>
                 <p>Phiên bản 2.0.0</p>
-                <p>© 2024 FinTech App. Tất cả các quyền được bảo lưu.</p>
+                <p>© 2024 FinTrack App. Tất cả các quyền được bảo lưu.</p>
               </div>
             </section>
           )}

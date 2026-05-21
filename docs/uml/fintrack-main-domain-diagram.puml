@@ -1,0 +1,721 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Account & Auth" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+    -password: String
+    -role: Role
+    -isActived: Boolean
+  }
+
+  class InfoUser <<entity>> {
+    -id: String
+    -fullname: String
+    -email: String
+    -birthday: LocalDate
+    -address: String
+    -phone: String
+    -sex: Sex
+  }
+
+  class PasswordResetOtp <<entity>> {
+    -id: Long
+    -email: String
+    -otpHash: String
+    -expiryTime: LocalDateTime
+    -used: boolean
+    -createdAt: LocalDateTime
+  }
+
+  class AuthService <<service>> {
+    +register(request: RegisterRequest): void
+    +login(request: LoginRequest): LoginResponse
+    +sendOtp(email: String): void
+    +verifyOtp(email: String, otp: String): void
+    +resetPassword(email: String, otp: String, newPassword: String): void
+    +toggleAccount(accountId: String, status: boolean): void
+  }
+
+  class JwtService <<service>> {
+    -jwtSecretKey: String
+    +generateToken(account: Account): String
+    +extractAllClaims(token: String): Claims
+    +extractUsername(token: String): String
+  }
+
+  class EmailService <<service>> {
+    +sendOtpEmail(email: String, otp: String): void
+  }
+
+  class RegisterRequest <<dto>> {
+    -username: String
+    -password: String
+    -fullname: String
+    -birthday: LocalDate
+    -sex: Sex
+    -address: String
+    -email: String
+    -phone: String
+  }
+
+  class LoginRequest <<dto>> {
+    -login: String
+    -password: String
+  }
+
+  class ForgotPasswordRequest <<dto>> {
+    -email: String
+  }
+
+  class VerifyOtpRequest <<dto>> {
+    -email: String
+    -otp: String
+  }
+
+  class ResetPasswordRequest <<dto>> {
+    -email: String
+    -otp: String
+    -newPassword: String
+  }
+
+  class LoginResponse <<dto>> {
+    -accessToken: String
+    -userId: String
+    -username: String
+    -role: Role
+  }
+}
+
+package "Wallet / Transaction / Budget" {
+  class Wallet <<entity>> {
+    -id: String
+    -type: WalletType
+    -name: String
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class Transaction <<entity>> {
+    -id: String
+    -type: TransactionType
+    -amount: BigDecimal
+    -description: String
+    -createdAt: LocalDateTime
+  }
+
+  class Category <<entity>> {
+    -id: String
+    -categoryName: String
+    -type: CategoryType
+    -isDefault: Boolean
+  }
+
+  class SubCategory <<entity>> {
+    -id: String
+    -subcategoryName: String
+    -isDefault: Boolean
+  }
+
+  class Budget <<entity>> {
+    -id: String
+    -budget_name: String
+    -type: BudgetType
+    -amount: double
+    -spent: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: BudgetPeriod
+  }
+
+  class WalletService <<service>> {
+    +getWallets(accountId: String): List<WalletResponse>
+    +getWalletById(walletId: String, accountId: String): WalletResponse
+    +createWallet(accountId: String, request: WalletRequest): void
+    +updateWallet(walletId: String, accountId: String, request: WalletRequest): void
+    +deleteWallet(walletId: String, accountId: String): void
+  }
+
+  class TransactionService <<service>> {
+    +getAll(account: Account): List<Transaction>
+    +getById(id: String, account: Account): Transaction
+    +create(req: TransactionRequest, account: Account): Transaction
+    +update(id: String, req: TransactionRequest, account: Account): Transaction
+    +delete(id: String, account: Account): void
+    +createDebtPaymentTransaction(wallet: Wallet, debtName: String, debtId: Long, amount: BigDecimal, note: String, account: Account): Transaction
+    +createDebtIncomeTransaction(wallet: Wallet, debtName: String, debtId: Long, amount: BigDecimal, note: String, account: Account): Transaction
+  }
+
+  class CategoryService <<service>> {
+    +getByType(type: String, accountId: String): List<Category>
+    +create(req: CategoryRequest, accountId: String): Category
+    +update(id: String, req: CategoryRequest, accountId: String): Category
+    +delete(id: String, accountId: String): void
+  }
+
+  class SubCategoryService <<service>> {
+    +get(categoryId: String, accountId: String): List<SubCategory>
+    +create(req: SubCategoryRequest, accountId: String): SubCategory
+    +delete(id: String, accountId: String): void
+  }
+
+  class BudgetService <<service>> {
+    +createBudget(walletId: String, request: BudgetRequest): Budget
+    +getBudgetById(id: String): Budget
+    +updateBudget(id: String, request: BudgetRequest): Budget
+    +deleteBudget(id: String): void
+    +getBudgetsByWallet(walletId: String): List<Budget>
+  }
+
+  class WalletRequest <<dto>> {
+    -type: String
+    -name: String
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class WalletResponse <<dto>> {
+    -id: String
+    -name: String
+    -currency: String
+    -type: String
+    -balance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class TransactionRequest <<dto>> {
+    -type: String
+    -amount: BigDecimal
+    -description: String
+    -walletId: String
+    -toWalletId: String
+    -categoryId: String
+  }
+
+  class CategoryRequest <<dto>> {
+    -name: String
+    -type: String
+  }
+
+  class SubCategoryRequest <<dto>> {
+    -name: String
+    -categoryId: String
+  }
+
+  class BudgetRequest <<dto>> {
+    -budget_name: String
+    -type: String
+    -amount: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: String
+    -categoryIds: List<String>
+  }
+
+  class CategoryResponse <<dto>> {
+    -id: String
+    -name: String
+    -isDefault: Boolean
+  }
+
+  class BudgetResponse <<dto>> {
+    -id: String
+    -budget_name: String
+    -type: String
+    -amount: double
+    -spent: double
+    -progress: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: String
+    -walletId: String
+  }
+}
+
+package "Saving" {
+  class Saving <<entity>> {
+    -id: String
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -type: SavingType
+    -category: String
+    -targetDate: LocalDate
+    -period: SavingPeriod
+    -status: SavingStatus
+  }
+
+  class SavingTransaction <<entity>> {
+    -id: Long
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+  }
+
+  class SavingService <<service>> {
+    +createSaving(walletId: String, req: SavingRequest): Saving
+    +getByWallet(walletId: String): List<Saving>
+    +addMoney(savingId: String, req: SavingTransactionRequest): Saving
+    +withdraw(savingId: String, req: WithdrawSavingRequest): Saving
+  }
+
+  class SavingRequest <<dto>> {
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -type: String
+    -category: String
+    -targetDate: LocalDate
+    -period: String
+  }
+
+  class SavingTransactionRequest <<dto>> {
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+    -walletId: String
+  }
+
+  class WithdrawSavingRequest <<dto>> {
+    -amount: BigDecimal
+    -walletId: String
+    -note: String
+  }
+
+  class SavingResponse <<dto>> {
+    -id: String
+    -title: String
+    -currency: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -progress: double
+    -type: String
+    -category: String
+    -targetDate: LocalDate
+    -period: String
+    -walletId: String
+  }
+
+  class SavingTransactionResponse <<dto>> {
+    -id: Long
+    -note: String
+    -amount: BigDecimal
+    -transactionDate: LocalDateTime
+    -walletId: String
+  }
+}
+
+package "Debt" {
+  class Debt <<entity>> {
+    -id: Long
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -remainingAmount: BigDecimal
+    -createdDate: LocalDateTime
+    -targetDate: LocalDate
+    -Note: String
+    +prePersist(): void
+  }
+
+  class DebtPayment <<entity>> {
+    -id: Long
+    -title: String
+    -amount: BigDecimal
+    -paymentDate: LocalDateTime
+    -Note: String
+    +prePersist(): void
+  }
+
+  class DebtService <<service>> {
+    +createDebt(debt: Debt): Debt
+    +getAll(): List<Debt>
+    +getById(id: Long): Debt
+    +payDebt(debtId: Long, payment: DebtPayment, username: String): DebtPayment
+    +getPayments(debtId: Long): List<DebtPayment>
+  }
+
+  class DebtRequest <<dto>> {
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -targetDate: LocalDate
+    -Note: String
+    -walletId: String
+  }
+
+  class DebtPaymentRequest <<dto>> {
+    -title: String
+    -amount: BigDecimal
+    -walletId: String
+  }
+
+  class DebtResponse <<dto>> {
+    -id: Long
+    -name: String
+    -currency: String
+    -totalAmount: BigDecimal
+    -paidAmount: BigDecimal
+    -remainingAmount: BigDecimal
+    -createdDate: LocalDateTime
+    -targetDate: LocalDate
+    -Note: String
+    -walletId: String
+  }
+
+  class DebtPaymentResponse <<dto>> {
+    -id: Long
+    -title: String
+    -amount: BigDecimal
+    -paymentDate: LocalDateTime
+    -walletId: String
+    -debtId: Long
+  }
+}
+
+package "Admin & AI" {
+  class AdminService <<service>> {
+    +getAllUsers(): List<AdminUserResponse>
+    +getUserById(accountId: String): AdminUserResponse
+    +toggleAccountStatus(accountId: String, active: boolean): void
+    +updateUserRole(accountId: String, role: String): void
+    +getAllTransactions(): List<AdminTransactionResponse>
+    +getStats(): AdminStatsResponse
+    +getAllWallets(): List<Object[]>
+  }
+
+  class AiService <<service>> {
+    +chat(request: ChatRequest, accountId: String): ChatResponse
+  }
+
+  class TransactionAIService <<service>> {
+    +handleTransaction(message: String, accountId: String): ChatResponse
+  }
+
+  class AiFinanceSnapshotService <<service>> {
+    +buildSnapshot(accountId: String): FinanceSnapshot
+  }
+
+  class AiAnalyzerService <<service>> {
+    +buildOverview(snapshot: FinanceSnapshot): String
+    +analyzeSpending(snapshot: FinanceSnapshot): String
+    +summarizeWallets(snapshot: FinanceSnapshot): String
+    +summarizeBudgets(snapshot: FinanceSnapshot): String
+    +summarizeSavings(snapshot: FinanceSnapshot): String
+    +summarizeDebts(snapshot: FinanceSnapshot): String
+    +summarizeRecentTransactions(snapshot: FinanceSnapshot): String
+    +detectLeak(accountId: String): String
+  }
+
+  class AiPredictService <<service>> {
+    +predict(snapshot: FinanceSnapshot): String
+  }
+
+  class GeminiService <<service>> {
+    -apiKey: String
+    +isAvailable(): boolean
+    +callGemini(prompt: String): String
+    +callGemini(prompt: String, fallback: String): String
+    +parseJsonObject(responseText: String): Map<String, Object>
+  }
+
+  class FinanceSnapshot <<record>> {
+    -wallets: List<Wallet>
+    -budgets: List<Budget>
+    -debts: List<Debt>
+    -savings: List<Saving>
+    -monthTransactions: List<Transaction>
+    -recentTransactions: List<Transaction>
+    -overBudgetItems: List<Budget>
+    -nearLimitBudgetItems: List<Budget>
+    -topExpenseCategories: List<CategorySpend>
+    -cashBalance: BigDecimal
+    -availableCredit: BigDecimal
+    -outstandingCardBalance: BigDecimal
+    -monthIncome: BigDecimal
+    -monthExpense: BigDecimal
+    -monthNet: BigDecimal
+    -totalDebtRemaining: BigDecimal
+    -totalSavingCurrent: BigDecimal
+    -totalSavingTarget: BigDecimal
+    +hasAnyData(): boolean
+  }
+
+  class CategorySpend <<record>> {
+    -categoryName: String
+    -amount: BigDecimal
+  }
+
+  class AdminUserResponse <<dto>> {
+    -id: String
+    -username: String
+    -fullname: String
+    -email: String
+    -phone: String
+    -role: String
+    -isActived: Boolean
+    -birthday: LocalDate
+    -sex: String
+    -address: String
+    -joinedAt: LocalDateTime
+    -walletCount: int
+    -transactionCount: int
+    -totalIncome: BigDecimal
+    -totalExpense: BigDecimal
+  }
+
+  class AdminTransactionResponse <<dto>> {
+    -id: String
+    -type: String
+    -amount: BigDecimal
+    -description: String
+    -categoryName: String
+    -createdAt: LocalDateTime
+    -username: String
+    -walletName: String
+    -walletId: String
+    -accountId: String
+  }
+
+  class AdminStatsResponse <<dto>> {
+    -totalUsers: long
+    -totalAdmins: long
+    -totalWallets: long
+    -totalTransactions: long
+    -totalDebts: long
+    -totalSavings: long
+    -totalRevenue: BigDecimal
+    -totalExpense: BigDecimal
+    -avgTransaction: BigDecimal
+  }
+
+  class ChatRequest <<dto>> {
+    -message: String
+    -activeTab: String
+  }
+
+  class "ChatRequest.HistoryItem" as ChatHistoryItem <<dto>> {
+    -role: String
+    -text: String
+  }
+
+  class ChatResponse <<dto>> {
+    -reply: String
+    -action: String
+    -refreshScopes: List<String>
+  }
+}
+
+package "Enums" {
+  enum Role {
+    USER
+    ADMIN
+  }
+
+  enum Sex {
+    NAM
+    NU
+  }
+
+  enum WalletType {
+    CASH
+    CREDIT
+  }
+
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  enum CategoryType {
+    INCOME
+    EXPENSE
+  }
+
+  enum BudgetType {
+    EXPENSE
+    INCOME
+  }
+
+  enum BudgetPeriod {
+    DAILY
+    WEEKLY
+    MONTHLY
+  }
+
+  enum SavingType {
+    GOAL
+    PERIODIC
+  }
+
+  enum SavingPeriod {
+    WEEKLY
+    MONTHLY
+    YEARLY
+  }
+
+  enum SavingStatus {
+    ACTIVE
+    COMPLETED
+    WITHDRAWN
+  }
+
+  enum ChatIntent {
+    HELP
+    OVERVIEW
+    SPENDING_ANALYSIS
+    BUDGET_STATUS
+    SAVINGS_STATUS
+    DEBT_STATUS
+    WALLET_STATUS
+    RECENT_TRANSACTIONS
+    PREDICTION
+    GENERAL
+  }
+}
+
+AuthService --> Account
+AuthService --> InfoUser
+AuthService --> PasswordResetOtp
+AuthService --> JwtService
+AuthService --> EmailService
+AuthService ..> RegisterRequest
+AuthService ..> LoginRequest
+AuthService ..> ForgotPasswordRequest
+AuthService ..> VerifyOtpRequest
+AuthService ..> ResetPasswordRequest
+AuthService ..> LoginResponse
+JwtService ..> Account
+
+WalletService --> Account
+WalletService --> Wallet
+WalletService ..> WalletRequest
+WalletService ..> WalletResponse
+
+TransactionService --> Account
+TransactionService --> Wallet
+TransactionService --> Transaction
+TransactionService --> Category
+TransactionService ..> TransactionRequest
+
+CategoryService --> Category
+CategoryService --> Account
+CategoryService ..> CategoryRequest
+
+SubCategoryService --> SubCategory
+SubCategoryService --> Category
+SubCategoryService --> Account
+SubCategoryService ..> SubCategoryRequest
+
+BudgetService --> Budget
+BudgetService --> Wallet
+BudgetService --> Category
+BudgetService --> Transaction
+BudgetService ..> BudgetRequest
+BudgetService ..> BudgetResponse
+BudgetResponse "1" o-- "0..*" CategoryResponse : categories
+
+SavingService --> Saving
+SavingService --> SavingTransaction
+SavingService --> Wallet
+SavingService --> Transaction
+SavingService ..> SavingRequest
+SavingService ..> SavingTransactionRequest
+SavingService ..> WithdrawSavingRequest
+SavingService ..> SavingResponse
+SavingResponse "1" o-- "0..*" SavingTransactionResponse : transactions
+
+DebtService --> Debt
+DebtService --> DebtPayment
+DebtService --> Wallet
+DebtService --> Transaction
+DebtService --> Category
+DebtService --> Account
+DebtService ..> DebtRequest
+DebtService ..> DebtPaymentRequest
+DebtService ..> DebtResponse
+DebtService ..> DebtPaymentResponse
+
+AdminService --> Account
+AdminService --> Wallet
+AdminService --> Transaction
+AdminService --> Debt
+AdminService --> Saving
+AdminService ..> AdminUserResponse
+AdminService ..> AdminTransactionResponse
+AdminService ..> AdminStatsResponse
+
+AiService --> TransactionAIService
+AiService --> AiFinanceSnapshotService
+AiService --> AiAnalyzerService
+AiService --> AiPredictService
+AiService --> GeminiService
+AiService ..> ChatRequest
+AiService ..> ChatResponse
+AiService ..> ChatIntent
+
+TransactionAIService --> Account
+TransactionAIService --> Wallet
+TransactionAIService --> Transaction
+TransactionAIService --> Category
+TransactionAIService ..> ChatResponse
+
+AiFinanceSnapshotService --> Wallet
+AiFinanceSnapshotService --> Budget
+AiFinanceSnapshotService --> Debt
+AiFinanceSnapshotService --> Saving
+AiFinanceSnapshotService --> Transaction
+AiFinanceSnapshotService --> BudgetService
+AiFinanceSnapshotService --> FinanceSnapshot
+
+AiAnalyzerService --> FinanceSnapshot
+AiPredictService --> FinanceSnapshot
+FinanceSnapshot "1" o-- "0..*" Wallet
+FinanceSnapshot "1" o-- "0..*" Budget
+FinanceSnapshot "1" o-- "0..*" Debt
+FinanceSnapshot "1" o-- "0..*" Saving
+FinanceSnapshot "1" o-- "0..*" Transaction
+FinanceSnapshot "1" o-- "0..*" CategorySpend
+ChatRequest "1" o-- "0..*" ChatHistoryItem : history
+
+Account "1" *-- "0..1" InfoUser
+Account "1" -- "0..*" Wallet
+Account "1" -- "0..*" Category
+Account "1" -- "0..*" SubCategory
+Wallet "1" -- "0..*" Transaction : source
+Transaction "0..*" --> "0..1" Wallet : toWallet
+Category "1" -- "0..*" Transaction
+Category "1" -- "0..*" SubCategory
+Wallet "1" -- "0..*" Budget
+Budget "0..*" -- "0..*" Category
+Wallet "1" -- "0..*" Saving
+Saving "1" *-- "0..*" SavingTransaction
+SavingTransaction "0..*" --> "1" Wallet
+Wallet "1" -- "0..*" Debt
+Debt "1" *-- "0..*" DebtPayment
+DebtPayment "0..*" --> "1" Wallet
+
+Account ..> Role
+InfoUser ..> Sex
+Wallet ..> WalletType
+Transaction ..> TransactionType
+Category ..> CategoryType
+Budget ..> BudgetType
+Budget ..> BudgetPeriod
+Saving ..> SavingType
+Saving ..> SavingPeriod
+Saving ..> SavingStatus
+@enduml

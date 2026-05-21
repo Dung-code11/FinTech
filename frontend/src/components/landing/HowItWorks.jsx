@@ -40,7 +40,7 @@ const HowItWorks = () => {
             <span className={styles.gradientText}>4 bước đơn giản</span>
           </h2>
           <p className={styles.sectionDescription}>
-            FinTech được thiết kế để dễ sử dụng, ngay cả với người mới bắt đầu.
+            FinTrack được thiết kế để dễ sử dụng, ngay cả với người mới bắt đầu.
             Hãy làm theo các bước dưới đây để bắt đầu hành trình tài chính của bạn.
           </p>
         </div>
@@ -71,7 +71,7 @@ const HowItWorks = () => {
         {/* Demo Video/Image */}
         <div className={styles.demoSection}>
           <div className={styles.demoContent}>
-            <h3>Xem FinTech trong action</h3>
+            <h3>Xem FinTrack trong action</h3>
             <p>Khám phá cách ứng dụng giúp bạn quản lý tài chính hiệu quả</p>
             <button className={styles.demoBtn}>
               Xem demo

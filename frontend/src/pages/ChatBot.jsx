@@ -53,7 +53,7 @@ const createMessage = (type, text) => ({
 const createWelcomeMessage = (activeTab) =>
   createMessage(
     'bot',
-    `Xin chào, mình là trợ lý tài chính AI của bạn.\nBạn đang ở ${TAB_TITLES[activeTab] || 'FinTech'}.\nHãy hỏi mình về ví, giao dịch, ngân sách, tiết kiệm, nợ hoặc nhập thẳng một khoản thu/chi để mình ghi lại.`,
+    `Xin chào, mình là trợ lý tài chính AI của bạn.\nBạn đang ở ${TAB_TITLES[activeTab] || 'FinTrack'}.\nHãy hỏi mình về ví, giao dịch, ngân sách, tiết kiệm, nợ hoặc nhập thẳng một khoản thu/chi để mình ghi lại.`,
   );
 
 const ChatBot = ({ onClose, activeTab, showQuickPrompts = true }) => {

@@ -1,6 +1,7 @@
 package com.fintrack.backend.dto;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,4 +22,6 @@ public class TransactionRequest {
     public String toWalletId; // dùng cho TRANSFER
 
     public String categoryId;
+
+    public LocalDate createdAt;
 }

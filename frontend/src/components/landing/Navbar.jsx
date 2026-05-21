@@ -29,7 +29,7 @@ const Navbar = () => {
         {/* Logo */}
         <Link to="/" className={styles.logo}>
           <Wallet size={28} />
-          <span>FinTech</span>
+          <span>FinTrack</span>
         </Link>
 
         {/* Desktop Menu */}

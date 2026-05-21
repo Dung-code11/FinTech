@@ -116,7 +116,7 @@ const RegisterPage = () => {
         <div className={styles.successCard}>
           <CheckCircle size={60} color="#4caf50" />
           <h2>Đăng ký thành công!</h2>
-          <p>Cảm ơn bạn đã đăng ký tài khoản FinTech.</p>
+          <p>Cảm ơn bạn đã đăng ký tài khoản FinTrack.</p>
           <p>Bạn sẽ được chuyển hướng đến trang đăng nhập sau vài giây...</p>
           <Link to="/login" className={styles.loginNowBtn}>
             Đăng nhập ngay
@@ -130,9 +130,9 @@ const RegisterPage = () => {
     <div className={styles.registerPage}>
       <div className={styles.registerCard}>
         <div className={styles.header}>
-          <img src="/logo.png" alt="FinTech" className={styles.logo} />
+          <img src="/fintrack-logo.svg" alt="FinTrack" className={styles.logo} />
           <h1>Đăng ký tài khoản</h1>
-          <p className={styles.subtitle}>Tham gia FinTech ngay hôm nay</p>
+          <p className={styles.subtitle}>Tham gia FinTrack ngay hôm nay</p>
         </div>
 
         {errors.submit && (

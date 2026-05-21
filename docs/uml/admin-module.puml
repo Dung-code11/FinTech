@@ -1,0 +1,219 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Controllers" {
+  class AdminController <<controller>> {
+    -adminService: AdminService
+    -walletRepository: WalletRepository
+    -debtRepository: DebtRepository
+    -savingRepository: SavingRepository
+    +getStats(auth): AdminStatsResponse
+    +getAllUsers(auth, search: String, role: String, active: Boolean): List<AdminUserResponse>
+    +getUserById(id: String, auth): AdminUserResponse
+    +toggleUserStatus(id: String, active: boolean, auth): Map
+    +updateUserRole(id: String, role: String, auth): Map
+    +getAllWallets(auth): List<Map>
+    +getAllTransactions(auth, type: String, search: String, accountId: String): List<AdminTransactionResponse>
+    +deleteTransaction(id: String, auth): Map
+    +getAllDebts(auth): List<Map>
+    +getAllSavings(auth): List<Map>
+    +getDashboardData(auth): Map
+    -checkAdmin(auth): void
+  }
+}
+
+package "Services" {
+  class AdminService <<service>> {
+    -accountRepository: AccountRepository
+    -walletRepository: WalletRepository
+    -transactionRepository: TransactionRepository
+    -debtRepository: DebtRepository
+    -savingRepository: SavingRepository
+    +getAllUsers(): List<AdminUserResponse>
+    +getUserById(accountId: String): AdminUserResponse
+    +toggleAccountStatus(accountId: String, active: boolean): void
+    +updateUserRole(accountId: String, role: String): void
+    +getAllTransactions(): List<AdminTransactionResponse>
+    +getStats(): AdminStatsResponse
+    +getAllWallets(): List<Object[]>
+  }
+}
+
+package "Repositories" {
+  interface AccountRepository <<repository>> {
+    +findAll(): List<Account>
+    +findById(accountId: String): Optional<Account>
+  }
+
+  interface WalletRepository <<repository>> {
+    +findAll(): List<Wallet>
+    +count(): long
+  }
+
+  interface TransactionRepository <<repository>> {
+    +findAll(): List<Transaction>
+    +findByWallet_Account_Id(accountId: String): List<Transaction>
+    +count(): long
+  }
+
+  interface DebtRepository <<repository>> {
+    +findAll(): List<Debt>
+    +count(): long
+  }
+
+  interface SavingRepository <<repository>> {
+    +findAll(): List<Saving>
+    +count(): long
+  }
+}
+
+package "Domain" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+    -role: Role
+    -isActived: Boolean
+  }
+
+  class InfoUser <<entity>> {
+    -fullname: String
+    -email: String
+    -phone: String
+    -birthday: LocalDate
+    -sex: String
+    -address: String
+  }
+
+  class Wallet <<entity>> {
+    -id: String
+    -name: String
+    -type: WalletType
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class Transaction <<entity>> {
+    -id: String
+    -type: TransactionType
+    -amount: BigDecimal
+    -description: String
+    -createdAt: LocalDateTime
+  }
+
+  class Debt <<entity>> {
+    -id: Long
+    -name: String
+    -totalAmount: BigDecimal
+    -remainingAmount: BigDecimal
+  }
+
+  class Saving <<entity>> {
+    -id: String
+    -title: String
+    -targetAmount: BigDecimal
+    -currentAmount: BigDecimal
+    -status: SavingStatus
+  }
+
+  enum Role {
+    USER
+    ADMIN
+  }
+
+  enum WalletType {
+    CASH
+    CREDIT
+  }
+
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  enum SavingStatus {
+    ACTIVE
+    COMPLETED
+    WITHDRAWN
+  }
+}
+
+package "DTOs" {
+  class AdminUserResponse <<dto>> {
+    -id: String
+    -username: String
+    -fullname: String
+    -email: String
+    -phone: String
+    -role: String
+    -isActived: Boolean
+    -birthday: LocalDate
+    -sex: String
+    -address: String
+    -joinedAt: LocalDateTime
+    -walletCount: int
+    -transactionCount: int
+    -totalIncome: BigDecimal
+    -totalExpense: BigDecimal
+  }
+
+  class AdminTransactionResponse <<dto>> {
+    -id: String
+    -type: String
+    -amount: BigDecimal
+    -description: String
+    -categoryName: String
+    -createdAt: LocalDateTime
+    -username: String
+    -walletName: String
+    -walletId: String
+    -accountId: String
+  }
+
+  class AdminStatsResponse <<dto>> {
+    -totalUsers: long
+    -totalAdmins: long
+    -totalWallets: long
+    -totalTransactions: long
+    -totalDebts: long
+    -totalSavings: long
+    -totalRevenue: BigDecimal
+    -totalExpense: BigDecimal
+    -avgTransaction: BigDecimal
+  }
+}
+
+AdminController --> AdminService
+AdminController --> WalletRepository
+AdminController --> DebtRepository
+AdminController --> SavingRepository
+
+AdminService --> AccountRepository
+AdminService --> WalletRepository
+AdminService --> TransactionRepository
+AdminService --> DebtRepository
+AdminService --> SavingRepository
+
+AdminController ..> AdminUserResponse
+AdminController ..> AdminTransactionResponse
+AdminController ..> AdminStatsResponse
+AdminService ..> AdminUserResponse
+AdminService ..> AdminTransactionResponse
+AdminService ..> AdminStatsResponse
+
+Account "1" *-- "0..1" InfoUser : profile
+Account "1" -- "0..*" Wallet : owns
+Wallet "1" -- "0..*" Transaction : has
+Wallet "1" -- "0..*" Debt : has
+Wallet "1" -- "0..*" Saving : has
+
+Account ..> Role
+Wallet ..> WalletType
+Transaction ..> TransactionType
+Saving ..> SavingStatus
+@enduml

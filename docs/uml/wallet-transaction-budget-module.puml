@@ -1,0 +1,340 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "Controllers" {
+  class WalletController <<controller>> {
+    -walletService: WalletService
+    +getWallets(authentication): List<WalletResponse>
+    +getWallet(walletId: String, authentication): WalletResponse
+    +createWallet(authentication, request: WalletRequest): String
+    +updateWallet(walletId: String, authentication, request: WalletRequest): String
+    +deleteWallet(walletId: String, authentication): String
+  }
+
+  class TransactionController <<controller>> {
+    -service: TransactionService
+    +getAll(auth): List<Transaction>
+    +getById(id: String, auth): Transaction
+    +create(req: TransactionRequest, auth): Transaction
+    +update(id: String, req: TransactionRequest, auth): Transaction
+    +delete(id: String, auth): String
+  }
+
+  class CategoryController <<controller>> {
+    -service: CategoryService
+    +get(type: String, auth): List<Category>
+    +create(req: CategoryRequest, auth): Category
+    +update(id: String, req: CategoryRequest, auth): Category
+    +delete(id: String, auth): void
+  }
+
+  class SubCategoryController <<controller>> {
+    -service: SubCategoryService
+    +get(categoryId: String, auth): List<SubCategory>
+    +create(req: SubCategoryRequest, auth): SubCategory
+    +delete(id: String, auth): void
+  }
+
+  class BudgetController <<controller>> {
+    -budgetService: BudgetService
+    +createBudget(walletId: String, request: BudgetRequest): BudgetResponse
+    +getBudgetsByWallet(walletId: String): List<BudgetResponse>
+    +getBudgetDetail(budgetId: String): BudgetResponse
+    +updateBudget(budgetId: String, request: BudgetRequest): BudgetResponse
+    +deleteBudget(budgetId: String): String
+  }
+}
+
+package "Services" {
+  class WalletService <<service>> {
+    -walletRepository: WalletRepository
+    -accountRepository: AccountRepository
+    -toResponse(wallet: Wallet): WalletResponse
+    +getWallets(accountId: String): List<WalletResponse>
+    +getWalletById(walletId: String, accountId: String): WalletResponse
+    +createWallet(accountId: String, request: WalletRequest): void
+    +updateWallet(walletId: String, accountId: String, request: WalletRequest): void
+    +deleteWallet(walletId: String, accountId: String): void
+  }
+
+  class TransactionService <<service>> {
+    -transactionRepository: TransactionRepository
+    -walletRepository: WalletRepository
+    -categoryRepository: CategoryRepository
+    +getAll(account: Account): List<Transaction>
+    +getById(id: String, account: Account): Transaction
+    +create(req: TransactionRequest, account: Account): Transaction
+    +update(id: String, req: TransactionRequest, account: Account): Transaction
+    +delete(id: String, account: Account): void
+    +createDebtPaymentTransaction(wallet: Wallet, debtName: String, debtId: Long, amount: BigDecimal, note: String, account: Account): Transaction
+    +createDebtIncomeTransaction(wallet: Wallet, debtName: String, debtId: Long, amount: BigDecimal, note: String, account: Account): Transaction
+    -findOrCreateCategory(categoryName: String, type: CategoryType, account: Account): Category
+    -getWalletAndCheck(walletId: String, accountId: String): Wallet
+    -handleCategory(req: TransactionRequest, t: Transaction, account: Account): void
+    -processMoney(t: Transaction, wallet: Wallet, req: TransactionRequest): void
+    -rollbackMoney(t: Transaction): void
+  }
+
+  class CategoryService <<service>> {
+    -categoryRepository: CategoryRepository
+    +getByType(type: String, accountId: String): List<Category>
+    +create(req: CategoryRequest, accountId: String): Category
+    +update(id: String, req: CategoryRequest, accountId: String): Category
+    +delete(id: String, accountId: String): void
+  }
+
+  class SubCategoryService <<service>> {
+    -subRepo: SubCategoryRepository
+    -categoryRepo: CategoryRepository
+    +get(categoryId: String, accountId: String): List<SubCategory>
+    +create(req: SubCategoryRequest, accountId: String): SubCategory
+    +delete(id: String, accountId: String): void
+  }
+
+  class BudgetService <<service>> {
+    -budgetRepository: BudgetRepository
+    -walletRepository: WalletRepository
+    -categoryRepository: CategoryRepository
+    -transactionRepository: TransactionRepository
+    +createBudget(walletId: String, request: BudgetRequest): Budget
+    +getBudgetById(id: String): Budget
+    +updateBudget(id: String, request: BudgetRequest): Budget
+    +deleteBudget(id: String): void
+    +getBudgetsByWallet(walletId: String): List<Budget>
+    -calculateSpentOptimized(budget: Budget): double
+  }
+
+  class BudgetMapper <<utility>> {
+    +toDTO(budget: Budget): BudgetResponse
+  }
+}
+
+package "Repositories" {
+  interface AccountRepository <<repository>> {
+    +findById(accountId: String): Optional<Account>
+  }
+
+  interface WalletRepository <<repository>> {
+    +findByAccount_Id(accountId: String): List<Wallet>
+    +findById(walletId: String): Optional<Wallet>
+  }
+
+  interface TransactionRepository <<repository>> {
+    +findByWallet_Account_Id(accountId: String): List<Transaction>
+    +sumByWalletAndTypeAndDate(walletId: String, type: TransactionType, start: LocalDateTime, end: LocalDateTime): BigDecimal
+    +sumByWalletTypeCategoryAndDate(walletId: String, type: TransactionType, categoryIds: List<String>, start: LocalDateTime, end: LocalDateTime): BigDecimal
+  }
+
+  interface CategoryRepository <<repository>> {
+    +findByTypeAndOwner_IdOrTypeAndIsDefaultTrue(type: CategoryType, ownerId: String, type2: CategoryType): List<Category>
+    +findByOwnerAndType(account: Account, type: CategoryType): List<Category>
+    +findByCategoryNameAndIsDefaultTrue(name: String): Optional<Category>
+    +findSmartCategoryByNameAndType(name: String, type: CategoryType, accountId: String): Optional<Category>
+  }
+
+  interface SubCategoryRepository <<repository>> {
+    +findByCategoryAndOwner(categoryId: String, accountId: String): List<SubCategory>
+  }
+
+  interface BudgetRepository <<repository>> {
+    +findByWallet_Id(walletId: String): List<Budget>
+  }
+}
+
+package "Domain" {
+  class Account <<entity>> {
+    -id: String
+    -username: String
+  }
+
+  class Wallet <<entity>> {
+    -id: String
+    -type: WalletType
+    -name: String
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class Transaction <<entity>> {
+    -id: String
+    -type: TransactionType
+    -amount: BigDecimal
+    -description: String
+    -createdAt: LocalDateTime
+  }
+
+  class Category <<entity>> {
+    -id: String
+    -categoryName: String
+    -type: CategoryType
+    -isDefault: Boolean
+  }
+
+  class SubCategory <<entity>> {
+    -id: String
+    -subcategoryName: String
+    -isDefault: Boolean
+  }
+
+  class Budget <<entity>> {
+    -id: String
+    -budget_name: String
+    -type: BudgetType
+    -amount: double
+    -spent: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: BudgetPeriod
+  }
+
+  enum WalletType {
+    CASH
+    CREDIT
+  }
+
+  enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+  }
+
+  enum CategoryType {
+    INCOME
+    EXPENSE
+  }
+
+  enum BudgetType {
+    EXPENSE
+    INCOME
+  }
+
+  enum BudgetPeriod {
+    DAILY
+    WEEKLY
+    MONTHLY
+  }
+}
+
+package "DTOs" {
+  class WalletRequest <<dto>> {
+    -type: String
+    -name: String
+    -currency: String
+    -initialBalance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class WalletResponse <<dto>> {
+    -id: String
+    -name: String
+    -currency: String
+    -type: String
+    -balance: BigDecimal
+    -creditLimit: BigDecimal
+    -unpaidBalance: BigDecimal
+    -expiryDate: LocalDate
+  }
+
+  class TransactionRequest <<dto>> {
+    -type: String
+    -amount: BigDecimal
+    -description: String
+    -walletId: String
+    -toWalletId: String
+    -categoryId: String
+  }
+
+  class CategoryRequest <<dto>> {
+    -name: String
+    -type: String
+  }
+
+  class SubCategoryRequest <<dto>> {
+    -name: String
+    -categoryId: String
+  }
+
+  class BudgetRequest <<dto>> {
+    -budget_name: String
+    -type: String
+    -amount: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: String
+    -categoryIds: List<String>
+  }
+
+  class CategoryResponse <<dto>> {
+    -id: String
+    -name: String
+    -isDefault: Boolean
+  }
+
+  class BudgetResponse <<dto>> {
+    -id: String
+    -budget_name: String
+    -type: String
+    -amount: double
+    -spent: double
+    -progress: double
+    -startDate: LocalDate
+    -endDate: LocalDate
+    -period: String
+    -walletId: String
+  }
+}
+
+WalletController --> WalletService
+TransactionController --> TransactionService
+CategoryController --> CategoryService
+SubCategoryController --> SubCategoryService
+BudgetController --> BudgetService
+BudgetController --> BudgetMapper
+
+WalletService --> WalletRepository
+WalletService --> AccountRepository
+TransactionService --> TransactionRepository
+TransactionService --> WalletRepository
+TransactionService --> CategoryRepository
+CategoryService --> CategoryRepository
+SubCategoryService --> SubCategoryRepository
+SubCategoryService --> CategoryRepository
+BudgetService --> BudgetRepository
+BudgetService --> WalletRepository
+BudgetService --> CategoryRepository
+BudgetService --> TransactionRepository
+BudgetMapper ..> BudgetResponse
+BudgetMapper ..> CategoryResponse
+
+WalletController ..> WalletRequest
+WalletController ..> WalletResponse
+TransactionController ..> TransactionRequest
+CategoryController ..> CategoryRequest
+SubCategoryController ..> SubCategoryRequest
+BudgetController ..> BudgetRequest
+BudgetController ..> BudgetResponse
+
+Account "1" -- "0..*" Wallet : owns
+Account "1" -- "0..*" Category : owns
+Account "1" -- "0..*" SubCategory : owns
+Wallet "1" -- "0..*" Transaction : source
+Transaction "0..*" --> "0..1" Wallet : toWallet
+Category "1" -- "0..*" Transaction : categorizes
+Category "1" -- "0..*" SubCategory : contains
+Wallet "1" -- "0..*" Budget : budgets
+Budget "0..*" -- "0..*" Category : tracks
+
+Wallet ..> WalletType
+Transaction ..> TransactionType
+Category ..> CategoryType
+Budget ..> BudgetType
+Budget ..> BudgetPeriod
+BudgetResponse "1" o-- "0..*" CategoryResponse : categories
+@enduml

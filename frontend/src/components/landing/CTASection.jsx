@@ -14,7 +14,7 @@ const CTASection = () => {
               Sẵn sàng kiểm soát tài chính của bạn?
             </h2>
             <p className={styles.ctaDescription}>
-              Tham gia cùng hơn 1 triệu người dùng đang quản lý tài chính thông minh với FinTech.
+              Tham gia cùng hơn 1 triệu người dùng đang quản lý tài chính thông minh với FinTrack.
               Hoàn toàn miễn phí, không cần thẻ tín dụng.
             </p>
 

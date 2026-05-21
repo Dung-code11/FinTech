@@ -1,16 +1,21 @@
 package com.fintrack.backend.service;
 
 import com.fintrack.backend.dto.Response.AdminStatsResponse;
+import com.fintrack.backend.dto.Response.AdminCategoryResponse;
 import com.fintrack.backend.dto.Response.AdminTransactionResponse;
 import com.fintrack.backend.dto.Response.AdminUserResponse;
+import com.fintrack.backend.dto.CategoryRequest;
+import com.fintrack.backend.enums.CategoryType;
 import com.fintrack.backend.enums.TransactionType;
 import com.fintrack.backend.model.Account;
+import com.fintrack.backend.model.Category;
 import com.fintrack.backend.model.Transaction;
 import com.fintrack.backend.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,6 +39,9 @@ public class AdminService {
 
     @Autowired
     private SavingRepository savingRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
 
     /**
      * Lấy danh sách tất cả user (không phân trang)
@@ -234,5 +242,79 @@ public class AdminService {
                         w.getAccount() != null ? w.getAccount().getId() : null
                 })
                 .collect(Collectors.toList());
+    }
+
+    public List<AdminCategoryResponse> getAllCategories() {
+        return categoryRepository.findAll().stream()
+                .map(this::toAdminCategoryResponse)
+                .sorted(Comparator
+                        .comparing(AdminCategoryResponse::getIsDefault, Comparator.nullsLast(Boolean::compareTo))
+                        .reversed()
+                        .thenComparing(AdminCategoryResponse::getType, Comparator.nullsLast(String::compareTo))
+                        .thenComparing(AdminCategoryResponse::getName, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .collect(Collectors.toList());
+    }
+
+    public AdminCategoryResponse createCategory(CategoryRequest request) {
+        Category category = new Category();
+        category.setId(java.util.UUID.randomUUID().toString());
+        category.setCategoryName(request.name != null ? request.name.trim() : null);
+        category.setType(CategoryType.valueOf(request.type.toUpperCase()));
+
+        boolean isDefault = request.isDefault == null || Boolean.TRUE.equals(request.isDefault);
+        category.setIsDefault(isDefault);
+
+        if (isDefault) {
+            category.setOwner(null);
+        } else if (request.ownerId != null && !request.ownerId.isBlank()) {
+            Account owner = accountRepository.findById(request.ownerId)
+                    .orElseThrow(() -> new RuntimeException("Owner not found"));
+            category.setOwner(owner);
+        } else {
+            throw new RuntimeException("Custom category must have owner");
+        }
+
+        return toAdminCategoryResponse(categoryRepository.save(category));
+    }
+
+    public AdminCategoryResponse updateCategory(String id, CategoryRequest request) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        category.setCategoryName(request.name != null ? request.name.trim() : null);
+        category.setType(CategoryType.valueOf(request.type.toUpperCase()));
+
+        return toAdminCategoryResponse(categoryRepository.save(category));
+    }
+
+    public void deleteCategory(String id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Category not found"));
+
+        if (categoryRepository.countTransactionsByCategoryId(category.getId()) > 0) {
+            throw new RuntimeException("Cannot delete category that is being used by transactions");
+        }
+
+        if (categoryRepository.countSubCategoriesByCategoryId(category.getId()) > 0) {
+            throw new RuntimeException("Cannot delete category that still has sub-categories");
+        }
+
+        categoryRepository.delete(category);
+    }
+
+    private AdminCategoryResponse toAdminCategoryResponse(Category category) {
+        long transactionCount = categoryRepository.countTransactionsByCategoryId(category.getId());
+        long subCategoryCount = categoryRepository.countSubCategoriesByCategoryId(category.getId());
+
+        return AdminCategoryResponse.builder()
+                .id(category.getId())
+                .name(category.getCategoryName())
+                .type(category.getType() != null ? category.getType().name() : null)
+                .isDefault(Boolean.TRUE.equals(category.getIsDefault()))
+                .ownerId(category.getOwner() != null ? category.getOwner().getId() : null)
+                .ownerUsername(category.getOwner() != null ? category.getOwner().getUsername() : null)
+                .transactionCount((int) transactionCount)
+                .subCategoryCount((int) subCategoryCount)
+                .build();
     }
 }

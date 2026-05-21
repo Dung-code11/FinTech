@@ -87,4 +87,16 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
             @Param("type") CategoryType type,
             @Param("ownerId") String ownerId
     );
+
+    @Query("""
+        SELECT COUNT(t) FROM Transaction t
+        WHERE t.category.id = :categoryId
+    """)
+    long countTransactionsByCategoryId(@Param("categoryId") String categoryId);
+
+    @Query("""
+        SELECT COUNT(s) FROM SubCategory s
+        WHERE s.category.id = :categoryId
+    """)
+    long countSubCategoriesByCategoryId(@Param("categoryId") String categoryId);
 }

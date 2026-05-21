@@ -628,6 +628,21 @@
   outline: none;
 }
 
+.filterSelect {
+  height: 40px;
+  padding: 0 14px;
+  background: white;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-full);
+  color: var(--admin-gray);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.filterSelect:focus {
+  border-color: var(--admin-primary);
+}
+
 .filterBtn,
 .exportBtn {
   display: flex;
@@ -735,6 +750,89 @@
 
 .usersTable {
   overflow-x: auto;
+}
+
+.categoryFormCard {
+  background: var(--admin-gray-soft);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.categoryFormGrid {
+  display: grid;
+  grid-template-columns: minmax(240px, 2fr) minmax(180px, 1fr);
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.categoryField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.categoryField label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--admin-dark);
+}
+
+.categoryInput,
+.categorySelect {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--radius-md);
+  background: white;
+  color: var(--admin-dark);
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.categoryInput:focus,
+.categorySelect:focus {
+  border-color: var(--admin-primary);
+}
+
+.categoryFormActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.categoryHint {
+  font-size: 0.85rem;
+  color: var(--admin-gray);
+}
+
+.categoryButtons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.scopeBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.defaultScope {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
+.customScope {
+  background: var(--admin-warning-soft);
+  color: var(--admin-warning);
 }
 
 .usersTable table {
@@ -975,6 +1073,19 @@
   .searchBar {
     width: 100%;
     min-width: auto;
+  }
+
+  .filterSelect {
+    width: 100%;
+  }
+
+  .categoryFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .categoryFormActions {
+    flex-direction: column;
+    align-items: flex-start;
   }
   
   .usersTable {

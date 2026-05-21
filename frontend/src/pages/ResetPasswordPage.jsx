@@ -127,7 +127,7 @@ const ResetPasswordPage = () => {
         </button>
 
         <div className={styles.header}>
-          <img src="/logo.png" alt="FinTech" className={styles.logo} />
+          <img src="/fintrack-logo.svg" alt="FinTrack" className={styles.logo} />
           <h1>Đặt mật khẩu mới</h1>
           <p className={styles.subtitle}>
             Vui lòng nhập mật khẩu mới cho tài khoản <strong>{email}</strong>

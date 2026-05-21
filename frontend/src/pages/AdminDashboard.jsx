@@ -1,15 +1,41 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { adminService } from '../services/adminService';
 import styles from '../css/AdminDashboard.module.css';
 import {
-  Menu, Home, Users, Wallet, TrendingUp, CreditCard,
-  PiggyBank, Settings, LogOut, Bell, Search, ChevronRight,
-  ArrowUpRight, ArrowDownRight, Download, Filter, RefreshCw,
-  DollarSign, Activity, Shield, XCircle, CheckCircle,
-  Eye, Edit2, Trash2, AlertTriangle
+  Activity,
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  CheckCircle,
+  ChevronRight,
+  CreditCard,
+  DollarSign,
+  Edit2,
+  Home,
+  LogOut,
+  Menu,
+  PiggyBank,
+  RefreshCw,
+  Search,
+  Settings,
+  Shield,
+  Tags,
+  Trash2,
+  Users,
+  Wallet,
+  XCircle,
+  TrendingUp
 } from 'lucide-react';
+
+const initialCategoryForm = {
+  id: '',
+  name: '',
+  type: 'EXPENSE'
+};
+
+const normalize = (value) => String(value || '').toLowerCase();
 
 const AdminDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -19,24 +45,38 @@ const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Data states
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [wallets, setWallets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [debts, setDebts] = useState([]);
   const [savings, setSavings] = useState([]);
 
+  const [categoryTypeFilter, setCategoryTypeFilter] = useState('all');
+  const [categoryScopeFilter, setCategoryScopeFilter] = useState('all');
+  const [categoryForm, setCategoryForm] = useState({ ...initialCategoryForm });
+
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Toast helper
-  const showToast = (message, type = 'success') => {
+  const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+    window.setTimeout(() => setToast(null), 3000);
+  }, []);
 
-  // Load data theo tab
+  const resetCategoryForm = useCallback(() => {
+    setCategoryForm({ ...initialCategoryForm });
+  }, []);
+
+  const requireSuccess = useCallback((result) => {
+    if (!result?.success) {
+      throw new Error(result?.error || 'Request failed');
+    }
+
+    return result.data;
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -44,72 +84,131 @@ const AdminDashboard = () => {
     try {
       switch (activeTab) {
         case 'overview': {
-          const [statsRes, txRes] = await Promise.all([
+          const [statsResult, transactionsResult] = await Promise.all([
             adminService.getStats(),
             adminService.getTransactions()
           ]);
-          if (statsRes.success) setStats(statsRes.data);
-          if (txRes.success) setTransactions(txRes.data.slice(0, 10));
+
+          setStats(requireSuccess(statsResult));
+          setTransactions(requireSuccess(transactionsResult).slice(0, 10));
           break;
         }
-        case 'users': {
-          const res = await adminService.getUsers();
-          if (res.success) setUsers(res.data);
+        case 'users':
+          setUsers(requireSuccess(await adminService.getUsers()));
           break;
-        }
-        case 'wallets': {
-          const res = await adminService.getWallets();
-          if (res.success) setWallets(res.data);
+        case 'wallets':
+          setWallets(requireSuccess(await adminService.getWallets()));
           break;
-        }
-        case 'transactions': {
-          const res = await adminService.getTransactions();
-          if (res.success) setTransactions(res.data);
+        case 'categories':
+          setCategories(requireSuccess(await adminService.getCategories()));
           break;
-        }
-        case 'debts': {
-          const res = await adminService.getDebts();
-          if (res.success) setDebts(res.data);
+        case 'transactions':
+          setTransactions(requireSuccess(await adminService.getTransactions()));
           break;
-        }
-        case 'savings': {
-          const res = await adminService.getSavings();
-          if (res.success) setSavings(res.data);
+        case 'debts':
+          setDebts(requireSuccess(await adminService.getDebts()));
           break;
-        }
+        case 'savings':
+          setSavings(requireSuccess(await adminService.getSavings()));
+          break;
+        default:
+          break;
       }
-    } catch (err) {
-      setError(err.message);
+    } catch (requestError) {
+      setError(requestError.message);
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, requireSuccess]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // ========== ACTIONS ==========
+  useEffect(() => {
+    if (activeTab !== 'categories') {
+      resetCategoryForm();
+      setCategoryTypeFilter('all');
+      setCategoryScopeFilter('all');
+    }
+  }, [activeTab, resetCategoryForm]);
 
   const handleToggleStatus = async (userId, currentStatus) => {
-    const res = await adminService.toggleUserStatus(userId, !currentStatus);
-    if (res.success) {
-      showToast(!currentStatus ? 'Đã kích hoạt tài khoản' : 'Đã khóa tài khoản');
+    const result = await adminService.toggleUserStatus(userId, !currentStatus);
+    if (result.success) {
+      showToast(!currentStatus ? 'Da kich hoat tai khoan' : 'Da khoa tai khoan');
       loadData();
-    } else {
-      showToast(res.error, 'error');
+      return;
     }
+
+    showToast(result.error, 'error');
   };
 
   const handleChangeRole = async (userId, currentRole) => {
-    const newRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
-    const res = await adminService.updateUserRole(userId, newRole);
-    if (res.success) {
-      showToast(`Đã đổi vai trò thành ${newRole}`);
+    const nextRole = currentRole === 'ADMIN' ? 'USER' : 'ADMIN';
+    const result = await adminService.updateUserRole(userId, nextRole);
+
+    if (result.success) {
+      showToast(`Da doi vai tro thanh ${nextRole}`);
       loadData();
-    } else {
-      showToast(res.error, 'error');
+      return;
     }
+
+    showToast(result.error, 'error');
+  };
+
+  const handleCategorySubmit = async (event) => {
+    event.preventDefault();
+
+    if (!categoryForm.name.trim()) {
+      showToast('Ten danh muc khong duoc de trong', 'error');
+      return;
+    }
+
+    const payload = {
+      name: categoryForm.name.trim(),
+      type: categoryForm.type,
+      isDefault: true
+    };
+
+    const result = categoryForm.id
+      ? await adminService.updateCategory(categoryForm.id, payload)
+      : await adminService.createCategory(payload);
+
+    if (result.success) {
+      showToast(categoryForm.id ? 'Cap nhat danh muc thanh cong' : 'Tao danh muc thanh cong');
+      resetCategoryForm();
+      loadData();
+      return;
+    }
+
+    showToast(result.error, 'error');
+  };
+
+  const handleEditCategory = (category) => {
+    setCategoryForm({
+      id: category.id,
+      name: category.name || '',
+      type: category.type || 'EXPENSE'
+    });
+  };
+
+  const handleDeleteCategory = async (category) => {
+    if (!window.confirm(`Xoa danh muc "${category.name}"?`)) {
+      return;
+    }
+
+    const result = await adminService.deleteCategory(category.id);
+    if (result.success) {
+      showToast('Xoa danh muc thanh cong');
+      if (categoryForm.id === category.id) {
+        resetCategoryForm();
+      }
+      loadData();
+      return;
+    }
+
+    showToast(result.error, 'error');
   };
 
   const handleLogout = async () => {
@@ -117,111 +216,204 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
-  // ========== HELPERS ==========
-
   const formatCurrency = (amount) => {
-    if (!amount && amount !== 0) return '0 ₫';
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    if (!amount && amount !== 0) return '0 VND';
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('vi-VN');
+  const formatDate = (dateValue) => {
+    if (!dateValue) return '-';
+    return new Date(dateValue).toLocaleDateString('vi-VN');
   };
 
-  const filteredUsers = users.filter(u =>
-    (u.fullname || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter((userItem) =>
+    normalize(userItem.fullname).includes(normalize(searchQuery)) ||
+    normalize(userItem.username).includes(normalize(searchQuery)) ||
+    normalize(userItem.email).includes(normalize(searchQuery))
   );
 
-  const filteredTx = transactions.filter(t =>
-    (t.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (t.username || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredWallets = wallets.filter((walletItem) =>
+    normalize(walletItem.name).includes(normalize(searchQuery)) ||
+    normalize(walletItem.username).includes(normalize(searchQuery))
   );
+
+  const filteredTransactions = transactions.filter((transaction) =>
+    normalize(transaction.description).includes(normalize(searchQuery)) ||
+    normalize(transaction.username).includes(normalize(searchQuery)) ||
+    normalize(transaction.categoryName).includes(normalize(searchQuery))
+  );
+
+  const filteredDebts = debts.filter((debt) =>
+    normalize(debt.name).includes(normalize(searchQuery)) ||
+    normalize(debt.username).includes(normalize(searchQuery))
+  );
+
+  const filteredSavings = savings.filter((saving) =>
+    normalize(saving.title).includes(normalize(searchQuery)) ||
+    normalize(saving.username).includes(normalize(searchQuery))
+  );
+
+  const filteredCategories = categories.filter((category) => {
+    const matchesSearch =
+      normalize(category.name).includes(normalize(searchQuery)) ||
+      normalize(category.ownerUsername).includes(normalize(searchQuery));
+
+    const matchesType = categoryTypeFilter === 'all' || category.type === categoryTypeFilter;
+    const matchesScope =
+      categoryScopeFilter === 'all' ||
+      (categoryScopeFilter === 'default' && category.isDefault) ||
+      (categoryScopeFilter === 'custom' && !category.isDefault);
+
+    return matchesSearch && matchesType && matchesScope;
+  });
 
   const menuItems = [
-    { id: 'overview', label: 'Tổng quan', icon: <Home size={20} /> },
-    { id: 'users', label: 'Quản lý người dùng', icon: <Users size={20} /> },
-    { id: 'wallets', label: 'Quản lý ví', icon: <Wallet size={20} /> },
-    { id: 'transactions', label: 'Giao dịch', icon: <Activity size={20} /> },
-    { id: 'debts', label: 'Quản lý nợ', icon: <CreditCard size={20} /> },
-    { id: 'savings', label: 'Tiết kiệm', icon: <PiggyBank size={20} /> },
-    { id: 'settings', label: 'Cài đặt', icon: <Settings size={20} /> },
+    { id: 'overview', label: 'Tong quan', icon: <Home size={20} /> },
+    { id: 'users', label: 'Nguoi dung', icon: <Users size={20} /> },
+    { id: 'wallets', label: 'Vi', icon: <Wallet size={20} /> },
+    { id: 'categories', label: 'Danh muc', icon: <Tags size={20} /> },
+    { id: 'transactions', label: 'Giao dich', icon: <Activity size={20} /> },
+    { id: 'debts', label: 'Cong no', icon: <CreditCard size={20} /> },
+    { id: 'savings', label: 'Tiet kiem', icon: <PiggyBank size={20} /> },
+    { id: 'settings', label: 'Cai dat', icon: <Settings size={20} /> }
   ];
 
-  // ========== RENDER CONTENT ==========
+  const renderToolbar = (children) => (
+    <div className={styles.headerActions}>
+      <div className={styles.searchBar}>
+        <Search size={18} />
+        <input
+          type="text"
+          placeholder="Tim kiem..."
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
+      </div>
+      {children}
+      <button className={styles.refreshBtn} onClick={loadData} title="Lam moi">
+        <RefreshCw size={18} />
+      </button>
+    </div>
+  );
 
   const renderOverview = () => (
     <div className={styles.overviewContent}>
       {stats && (
         <div className={styles.statsGrid}>
-          <StatCard icon={<Users size={24} />} label="Tổng người dùng" value={stats.totalUsers}
-            bg="#e3f2fd" color="#1976d2" trend={stats.totalAdmins + ' admin'} />
-          <StatCard icon={<Wallet size={24} />} label="Tổng ví" value={stats.totalWallets}
-            bg="#d1fae5" color="#10b981" trend={`${stats.totalSavings} savings`} />
-          <StatCard icon={<Activity size={24} />} label="Tổng giao dịch" value={stats.totalTransactions}
-            bg="#fef3c7" color="#f59e0b" trend={formatCurrency(stats.avgTransaction) + ' TB'} />
-          <StatCard icon={<DollarSign size={24} />} label="Tổng thu nhập" value={formatCurrency(stats.totalRevenue)}
-            bg="#dcfce7" color="#16a34a" trend={`${formatCurrency(stats.totalExpense)} chi`} />
+          <StatCard
+            icon={<Users size={24} />}
+            label="Tong nguoi dung"
+            value={stats.totalUsers}
+            bg="#e3f2fd"
+            color="#1976d2"
+            trend={`${stats.totalAdmins} admin`}
+          />
+          <StatCard
+            icon={<Wallet size={24} />}
+            label="Tong vi"
+            value={stats.totalWallets}
+            bg="#d1fae5"
+            color="#10b981"
+            trend={`${stats.totalSavings} savings`}
+          />
+          <StatCard
+            icon={<Activity size={24} />}
+            label="Tong giao dich"
+            value={stats.totalTransactions}
+            bg="#fef3c7"
+            color="#f59e0b"
+            trend={`${formatCurrency(stats.avgTransaction)} trung binh`}
+          />
+          <StatCard
+            icon={<DollarSign size={24} />}
+            label="Tong thu nhap"
+            value={formatCurrency(stats.totalRevenue)}
+            bg="#dcfce7"
+            color="#16a34a"
+            trend={`${formatCurrency(stats.totalExpense)} chi`}
+          />
         </div>
       )}
 
-      {/* Charts */}
       <div className={styles.chartsSection}>
         <div className={styles.chartCard}>
           <div className={styles.chartHeader}>
-            <h3>Phân bố hệ thống</h3>
+            <h3>Phan bo he thong</h3>
           </div>
           <div className={styles.pieChartPlaceholder}>
             <div className={styles.pieStats}>
-              <div className={styles.pieItem}><div className={styles.pieColor} style={{ background: '#1976d2' }} /><span>Người dùng: {stats?.totalUsers || 0}</span></div>
-              <div className={styles.pieItem}><div className={styles.pieColor} style={{ background: '#ef4444' }} /><span>Nợ: {stats?.totalDebts || 0}</span></div>
-              <div className={styles.pieItem}><div className={styles.pieColor} style={{ background: '#10b981' }} /><span>Tiết kiệm: {stats?.totalSavings || 0}</span></div>
+              <div className={styles.pieItem}>
+                <div className={styles.pieColor} style={{ background: '#1976d2' }} />
+                <span>Nguoi dung: {stats?.totalUsers || 0}</span>
+              </div>
+              <div className={styles.pieItem}>
+                <div className={styles.pieColor} style={{ background: '#10b981' }} />
+                <span>Vi: {stats?.totalWallets || 0}</span>
+              </div>
+              <div className={styles.pieItem}>
+                <div className={styles.pieColor} style={{ background: '#f59e0b' }} />
+                <span>Giao dich: {stats?.totalTransactions || 0}</span>
+              </div>
             </div>
           </div>
         </div>
 
         <div className={styles.chartCard}>
-          <div className={styles.chartHeader}><h3>Thu / Chi</h3></div>
-          <div style={{ padding: '20px', textAlign: 'center' }}>
+          <div className={styles.chartHeader}>
+            <h3>Thu / Chi</h3>
+          </div>
+          <div style={{ padding: 20, textAlign: 'center' }}>
             <div style={{ marginBottom: 12 }}>
               <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 20 }}>
                 {formatCurrency(stats?.totalRevenue)}
               </span>
-              <div style={{ color: '#64748b', fontSize: 12 }}>Tổng thu nhập</div>
+              <div style={{ color: '#64748b', fontSize: 12 }}>Tong thu nhap</div>
             </div>
             <div>
               <span style={{ color: '#ef4444', fontWeight: 700, fontSize: 20 }}>
                 {formatCurrency(stats?.totalExpense)}
               </span>
-              <div style={{ color: '#64748b', fontSize: 12 }}>Tổng chi tiêu</div>
+              <div style={{ color: '#64748b', fontSize: 12 }}>Tong chi tieu</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Transactions */}
       <div className={styles.recentSection}>
         <div className={styles.sectionHeader}>
-          <h3>Giao dịch gần đây</h3>
+          <h3>Giao dich gan day</h3>
           <button className={styles.viewAllBtn} onClick={() => setActiveTab('transactions')}>
-            Xem tất cả <ChevronRight size={16} />
+            Xem tat ca <ChevronRight size={16} />
           </button>
         </div>
+
         <div className={styles.activityList}>
-          {transactions.length === 0 && <p style={{ padding: 20, color: '#64748b' }}>Chưa có giao dịch</p>}
-          {transactions.map(t => (
-            <div key={t.id} className={styles.activityItem}>
+          {transactions.length === 0 && (
+            <p style={{ padding: 20, color: '#64748b' }}>Chua co giao dich</p>
+          )}
+
+          {transactions.map((transaction) => (
+            <div key={transaction.id} className={styles.activityItem}>
               <div className={styles.activityIcon}>
-                {t.type === 'EXPENSE' ? <ArrowDownRight size={16} /> : <ArrowUpRight size={16} />}
+                {transaction.type === 'EXPENSE' ? <ArrowDownRight size={16} /> : <ArrowUpRight size={16} />}
               </div>
               <div className={styles.activityInfo}>
-                <span className={styles.activityName}>{t.description || 'Không mô tả'}</span>
-                <span className={styles.activityTime}>{t.username} • {formatDate(t.createdAt)}</span>
+                <span className={styles.activityName}>{transaction.description || 'Khong mo ta'}</span>
+                <span className={styles.activityTime}>
+                  {transaction.username || '-'} • {formatDate(transaction.createdAt)}
+                </span>
               </div>
-              <div className={styles.activityAmount} style={{ color: t.type === 'EXPENSE' ? '#ef4444' : '#10b981' }}>
-                {t.type === 'EXPENSE' ? '-' : '+'}{formatCurrency(t.amount)}
+              <div
+                className={styles.activityAmount}
+                style={{ color: transaction.type === 'EXPENSE' ? '#ef4444' : '#10b981' }}
+              >
+                {transaction.type === 'EXPENSE' ? '-' : '+'}
+                {formatCurrency(transaction.amount)}
               </div>
             </div>
           ))}
@@ -233,58 +425,63 @@ const AdminDashboard = () => {
   const renderUsers = () => (
     <div className={styles.usersContent}>
       <div className={styles.contentHeader}>
-        <h2>Quản lý người dùng</h2>
-        <div className={styles.headerActions}>
-          <div className={styles.searchBar}>
-            <Search size={18} />
-            <input type="text" placeholder="Tìm kiếm..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-          <button className={styles.filterBtn}><Filter size={18} /> Lọc</button>
-          <button className={styles.exportBtn}><Download size={18} /> Xuất Excel</button>
-          <button className={styles.refreshBtn} onClick={loadData}><RefreshCw size={18} /></button>
-        </div>
+        <h2>Quan ly nguoi dung</h2>
+        {renderToolbar()}
       </div>
 
       <div className={styles.usersTable}>
         <table>
           <thead>
             <tr>
-              <th>ID</th><th>Họ tên</th><th>Username</th><th>Email</th>
-              <th>Vai trò</th><th>Trạng thái</th><th>Số ví</th><th>Giao dịch</th><th>Thu</th><th>Chi</th><th>Thao tác</th>
+              <th>ID</th>
+              <th>Ho ten</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Vai tro</th>
+              <th>Trang thai</th>
+              <th>So vi</th>
+              <th>Giao dich</th>
+              <th>Thu</th>
+              <th>Chi</th>
+              <th>Thao tac</th>
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map(u => (
-              <tr key={u.id}>
-                <td>#{u.id?.slice(0, 6)}</td>
-                <td>{u.fullname || '-'}</td>
-                <td>{u.username}</td>
-                <td>{u.email || '-'}</td>
+            {filteredUsers.map((userItem) => (
+              <tr key={userItem.id}>
+                <td>#{userItem.id?.slice(0, 6)}</td>
+                <td>{userItem.fullname || '-'}</td>
+                <td>{userItem.username || '-'}</td>
+                <td>{userItem.email || '-'}</td>
                 <td>
-                  <span className={`${styles.roleBadge} ${u.role === 'ADMIN' ? styles.admin : styles.user}`}>
-                    {u.role}
+                  <span className={`${styles.roleBadge} ${userItem.role === 'ADMIN' ? styles.admin : styles.user}`}>
+                    {userItem.role}
                   </span>
                 </td>
                 <td>
-                  <span className={`${styles.statusBadge} ${u.isActived ? styles.active : styles.inactive}`}>
-                    {u.isActived ? 'Hoạt động' : 'Khóa'}
+                  <span className={`${styles.statusBadge} ${userItem.isActived ? styles.active : styles.inactive}`}>
+                    {userItem.isActived ? 'Hoat dong' : 'Khoa'}
                   </span>
                 </td>
-                <td>{u.walletCount || 0}</td>
-                <td>{u.transactionCount || 0}</td>
-                <td style={{ color: '#10b981' }}>{formatCurrency(u.totalIncome)}</td>
-                <td style={{ color: '#ef4444' }}>{formatCurrency(u.totalExpense)}</td>
+                <td>{userItem.walletCount || 0}</td>
+                <td>{userItem.transactionCount || 0}</td>
+                <td style={{ color: '#10b981' }}>{formatCurrency(userItem.totalIncome)}</td>
+                <td style={{ color: '#ef4444' }}>{formatCurrency(userItem.totalExpense)}</td>
                 <td>
                   <div className={styles.actionButtons}>
-                    <button className={styles.viewBtn} title="Xem chi tiết"><Eye size={16} /></button>
-                    <button className={styles.editBtn} title="Đổi vai trò"
-                      onClick={() => handleChangeRole(u.id, u.role)}><Edit2 size={16} /></button>
                     <button
-                      className={u.isActived ? styles.deleteBtn : styles.activateBtn}
-                      title={u.isActived ? 'Khóa tài khoản' : 'Kích hoạt'}
-                      onClick={() => handleToggleStatus(u.id, u.isActived)}>
-                      {u.isActived ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                      className={styles.editBtn}
+                      title="Doi vai tro"
+                      onClick={() => handleChangeRole(userItem.id, userItem.role)}
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      className={userItem.isActived ? styles.deleteBtn : styles.activateBtn}
+                      title={userItem.isActived ? 'Khoa tai khoan' : 'Kich hoat tai khoan'}
+                      onClick={() => handleToggleStatus(userItem.id, userItem.isActived)}
+                    >
+                      {userItem.isActived ? <XCircle size={16} /> : <CheckCircle size={16} />}
                     </button>
                   </div>
                 </td>
@@ -292,8 +489,9 @@ const AdminDashboard = () => {
             ))}
           </tbody>
         </table>
+
         {filteredUsers.length === 0 && (
-          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Không tìm thấy người dùng</p>
+          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong tim thay nguoi dung</p>
         )}
       </div>
     </div>
@@ -302,38 +500,175 @@ const AdminDashboard = () => {
   const renderWallets = () => (
     <div className={styles.usersContent}>
       <div className={styles.contentHeader}>
-        <h2>Quản lý ví</h2>
-        <div className={styles.headerActions}>
-          <div className={styles.searchBar}>
-            <Search size={18} />
-            <input type="text" placeholder="Tìm kiếm..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-          <button className={styles.refreshBtn} onClick={loadData}><RefreshCw size={18} /></button>
-        </div>
+        <h2>Quan ly vi</h2>
+        {renderToolbar()}
       </div>
+
       <div className={styles.usersTable}>
         <table>
           <thead>
-            <tr><th>ID</th><th>Tên ví</th><th>Loại</th><th>Số dư</th><th>Chủ ví</th><th>Role</th></tr>
+            <tr>
+              <th>ID</th>
+              <th>Ten vi</th>
+              <th>Loai</th>
+              <th>So du</th>
+              <th>Chu vi</th>
+              <th>Role</th>
+            </tr>
           </thead>
           <tbody>
-            {wallets.filter(w =>
-              (w.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (w.username || '').toLowerCase().includes(searchQuery.toLowerCase())
-            ).map(w => (
-              <tr key={w.id}>
-                <td>#{w.id?.slice(0, 6)}</td>
-                <td>{w.name}</td>
-                <td><span className={styles.roleBadge}>{w.type}</span></td>
-                <td style={{ fontWeight: 600 }}>{formatCurrency(w.initialBalance)}</td>
-                <td>{w.username}</td>
-                <td><span className={`${styles.roleBadge} ${w.userRole === 'ADMIN' ? styles.admin : ''}`}>{w.userRole}</span></td>
+            {filteredWallets.map((walletItem) => (
+              <tr key={walletItem.id}>
+                <td>#{walletItem.id?.slice(0, 6)}</td>
+                <td>{walletItem.name || '-'}</td>
+                <td><span className={styles.roleBadge}>{walletItem.type || '-'}</span></td>
+                <td style={{ fontWeight: 600 }}>{formatCurrency(walletItem.initialBalance)}</td>
+                <td>{walletItem.username || '-'}</td>
+                <td>
+                  <span className={`${styles.roleBadge} ${walletItem.userRole === 'ADMIN' ? styles.admin : styles.user}`}>
+                    {walletItem.userRole || '-'}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {wallets.length === 0 && <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Không có ví nào</p>}
+
+        {filteredWallets.length === 0 && (
+          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co vi nao</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderCategories = () => (
+    <div className={styles.usersContent}>
+      <div className={styles.contentHeader}>
+        <h2>Quan ly danh muc</h2>
+        {renderToolbar(
+          <>
+            <select
+              className={styles.filterSelect}
+              value={categoryTypeFilter}
+              onChange={(event) => setCategoryTypeFilter(event.target.value)}
+            >
+              <option value="all">Tat ca loai</option>
+              <option value="EXPENSE">Expense</option>
+              <option value="INCOME">Income</option>
+            </select>
+            <select
+              className={styles.filterSelect}
+              value={categoryScopeFilter}
+              onChange={(event) => setCategoryScopeFilter(event.target.value)}
+            >
+              <option value="all">Tat ca pham vi</option>
+              <option value="default">Mac dinh</option>
+              <option value="custom">Nguoi dung</option>
+            </select>
+          </>
+        )}
+      </div>
+
+      <form className={styles.categoryFormCard} onSubmit={handleCategorySubmit}>
+        <div className={styles.categoryFormGrid}>
+          <div className={styles.categoryField}>
+            <label>Ten danh muc</label>
+            <input
+              className={styles.categoryInput}
+              type="text"
+              value={categoryForm.name}
+              onChange={(event) => setCategoryForm((previous) => ({ ...previous, name: event.target.value }))}
+              placeholder="Nhap ten danh muc"
+            />
+          </div>
+          <div className={styles.categoryField}>
+            <label>Loai</label>
+            <select
+              className={styles.categorySelect}
+              value={categoryForm.type}
+              onChange={(event) => setCategoryForm((previous) => ({ ...previous, type: event.target.value }))}
+            >
+              <option value="EXPENSE">EXPENSE</option>
+              <option value="INCOME">INCOME</option>
+            </select>
+          </div>
+        </div>
+
+        <div className={styles.categoryFormActions}>
+          <span className={styles.categoryHint}>
+            Danh muc tao tu admin se duoc luu thanh danh muc mac dinh he thong.
+          </span>
+          <div className={styles.categoryButtons}>
+            {categoryForm.id && (
+              <button type="button" className={styles.filterBtn} onClick={resetCategoryForm}>
+                Huy sua
+              </button>
+            )}
+            <button type="submit" className={styles.exportBtn}>
+              {categoryForm.id ? 'Cap nhat danh muc' : 'Them danh muc'}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <div className={styles.usersTable}>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Ten</th>
+              <th>Loai</th>
+              <th>Pham vi</th>
+              <th>Chu so huu</th>
+              <th>Giao dich</th>
+              <th>Danh muc con</th>
+              <th>Thao tac</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredCategories.map((category) => (
+              <tr key={category.id}>
+                <td>#{category.id?.slice(0, 6)}</td>
+                <td>{category.name || '-'}</td>
+                <td>
+                  <span className={styles.roleBadge}>{category.type || '-'}</span>
+                </td>
+                <td>
+                  <span
+                    className={`${styles.scopeBadge} ${category.isDefault ? styles.defaultScope : styles.customScope}`}
+                  >
+                    {category.isDefault ? 'He thong' : 'Nguoi dung'}
+                  </span>
+                </td>
+                <td>{category.ownerUsername || '-'}</td>
+                <td>{category.transactionCount || 0}</td>
+                <td>{category.subCategoryCount || 0}</td>
+                <td>
+                  <div className={styles.actionButtons}>
+                    <button
+                      className={styles.editBtn}
+                      title="Sua danh muc"
+                      onClick={() => handleEditCategory(category)}
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button
+                      className={styles.deleteBtn}
+                      title="Xoa danh muc"
+                      onClick={() => handleDeleteCategory(category)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {filteredCategories.length === 0 && (
+          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co danh muc nao</p>
+        )}
       </div>
     </div>
   );
@@ -341,45 +676,59 @@ const AdminDashboard = () => {
   const renderTransactions = () => (
     <div className={styles.usersContent}>
       <div className={styles.contentHeader}>
-        <h2>Quản lý giao dịch</h2>
-        <div className={styles.headerActions}>
-          <div className={styles.searchBar}>
-            <Search size={18} />
-            <input type="text" placeholder="Tìm kiếm..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-          <button className={styles.filterBtn}><Filter size={18} /> Lọc</button>
-          <button className={styles.refreshBtn} onClick={loadData}><RefreshCw size={18} /></button>
-        </div>
+        <h2>Quan ly giao dich</h2>
+        {renderToolbar()}
       </div>
+
       <div className={styles.usersTable}>
         <table>
           <thead>
-            <tr><th>ID</th><th>Loại</th><th>Số tiền</th><th>Mô tả</th><th>Danh mục</th><th>Ví</th><th>User</th><th>Ngày</th></tr>
+            <tr>
+              <th>ID</th>
+              <th>Loai</th>
+              <th>So tien</th>
+              <th>Mo ta</th>
+              <th>Danh muc</th>
+              <th>Vi</th>
+              <th>User</th>
+              <th>Ngay</th>
+            </tr>
           </thead>
           <tbody>
-            {filteredTx.map(t => (
-              <tr key={t.id}>
-                <td>#{t.id?.slice(0, 6)}</td>
+            {filteredTransactions.map((transaction) => (
+              <tr key={transaction.id}>
+                <td>#{transaction.id?.slice(0, 6)}</td>
                 <td>
-                  <span style={{
-                    color: t.type === 'EXPENSE' ? '#ef4444' : '#10b981',
-                    fontWeight: 600
-                  }}>{t.type}</span>
+                  <span
+                    style={{
+                      color: transaction.type === 'EXPENSE' ? '#ef4444' : '#10b981',
+                      fontWeight: 600
+                    }}
+                  >
+                    {transaction.type}
+                  </span>
                 </td>
-                <td style={{ fontWeight: 600, color: t.type === 'EXPENSE' ? '#ef4444' : '#10b981' }}>
-                  {formatCurrency(t.amount)}
+                <td
+                  style={{
+                    fontWeight: 600,
+                    color: transaction.type === 'EXPENSE' ? '#ef4444' : '#10b981'
+                  }}
+                >
+                  {formatCurrency(transaction.amount)}
                 </td>
-                <td>{t.description || '-'}</td>
-                <td>{t.categoryName || '-'}</td>
-                <td>{t.walletName || '-'}</td>
-                <td>{t.username || '-'}</td>
-                <td>{formatDate(t.createdAt)}</td>
+                <td>{transaction.description || '-'}</td>
+                <td>{transaction.categoryName || '-'}</td>
+                <td>{transaction.walletName || '-'}</td>
+                <td>{transaction.username || '-'}</td>
+                <td>{formatDate(transaction.createdAt)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {filteredTx.length === 0 && <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Không có giao dịch</p>}
+
+        {filteredTransactions.length === 0 && (
+          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co giao dich</p>
+        )}
       </div>
     </div>
   );
@@ -387,39 +736,41 @@ const AdminDashboard = () => {
   const renderDebts = () => (
     <div className={styles.usersContent}>
       <div className={styles.contentHeader}>
-        <h2>Quản lý nợ</h2>
-        <div className={styles.headerActions}>
-          <div className={styles.searchBar}>
-            <Search size={18} />
-            <input type="text" placeholder="Tìm kiếm..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-          <button className={styles.refreshBtn} onClick={loadData}><RefreshCw size={18} /></button>
-        </div>
+        <h2>Quan ly no</h2>
+        {renderToolbar()}
       </div>
+
       <div className={styles.usersTable}>
         <table>
           <thead>
-            <tr><th>ID</th><th>Tên</th><th>Tổng</th><th>Còn lại</th><th>Ngày tạo</th><th>Ngày đến hạn</th><th>Chủ nợ</th></tr>
+            <tr>
+              <th>ID</th>
+              <th>Ten</th>
+              <th>Tong</th>
+              <th>Con lai</th>
+              <th>Ngay tao</th>
+              <th>Ngay den han</th>
+              <th>Chu no</th>
+            </tr>
           </thead>
           <tbody>
-            {debts.filter(d =>
-              (d.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (d.username || '').toLowerCase().includes(searchQuery.toLowerCase())
-            ).map(d => (
-              <tr key={d.id}>
-                <td>#{d.id}</td>
-                <td>{d.name}</td>
-                <td style={{ fontWeight: 600 }}>{formatCurrency(d.totalAmount)}</td>
-                <td style={{ color: '#ef4444', fontWeight: 600 }}>{formatCurrency(d.remainingAmount)}</td>
-                <td>{formatDate(d.createdDate)}</td>
-                <td>{formatDate(d.targetDate)}</td>
-                <td>{d.username || '-'}</td>
+            {filteredDebts.map((debt) => (
+              <tr key={debt.id}>
+                <td>#{debt.id}</td>
+                <td>{debt.name || '-'}</td>
+                <td style={{ fontWeight: 600 }}>{formatCurrency(debt.totalAmount)}</td>
+                <td style={{ color: '#ef4444', fontWeight: 600 }}>{formatCurrency(debt.remainingAmount)}</td>
+                <td>{formatDate(debt.createdDate)}</td>
+                <td>{formatDate(debt.targetDate)}</td>
+                <td>{debt.username || '-'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {debts.length === 0 && <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Không có khoản nợ</p>}
+
+        {filteredDebts.length === 0 && (
+          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co khoan no</p>
+        )}
       </div>
     </div>
   );
@@ -427,39 +778,45 @@ const AdminDashboard = () => {
   const renderSavings = () => (
     <div className={styles.usersContent}>
       <div className={styles.contentHeader}>
-        <h2>Quản lý tiết kiệm</h2>
-        <div className={styles.headerActions}>
-          <div className={styles.searchBar}>
-            <Search size={18} />
-            <input type="text" placeholder="Tìm kiếm..." value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-          <button className={styles.refreshBtn} onClick={loadData}><RefreshCw size={18} /></button>
-        </div>
+        <h2>Quan ly tiet kiem</h2>
+        {renderToolbar()}
       </div>
+
       <div className={styles.usersTable}>
         <table>
           <thead>
-            <tr><th>ID</th><th>Tiêu đề</th><th>Loại</th><th>Mục tiêu</th><th>Hiện tại</th><th>Trạng thái</th><th>Chủ TK</th></tr>
+            <tr>
+              <th>ID</th>
+              <th>Tieu de</th>
+              <th>Loai</th>
+              <th>Muc tieu</th>
+              <th>Hien tai</th>
+              <th>Trang thai</th>
+              <th>Chu TK</th>
+            </tr>
           </thead>
           <tbody>
-            {savings.filter(s =>
-              (s.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (s.username || '').toLowerCase().includes(searchQuery.toLowerCase())
-            ).map(s => (
-              <tr key={s.id}>
-                <td>#{s.id?.slice(0, 6)}</td>
-                <td>{s.title}</td>
-                <td><span className={styles.roleBadge}>{s.type}</span></td>
-                <td style={{ fontWeight: 600 }}>{formatCurrency(s.targetAmount)}</td>
-                <td style={{ color: '#10b981', fontWeight: 600 }}>{formatCurrency(s.currentAmount)}</td>
-                <td><span className={`${styles.statusBadge} ${s.status === 'ACTIVE' ? styles.active : styles.inactive}`}>{s.status}</span></td>
-                <td>{s.username || '-'}</td>
+            {filteredSavings.map((saving) => (
+              <tr key={saving.id}>
+                <td>#{saving.id?.slice(0, 6)}</td>
+                <td>{saving.title || '-'}</td>
+                <td><span className={styles.roleBadge}>{saving.type || '-'}</span></td>
+                <td style={{ fontWeight: 600 }}>{formatCurrency(saving.targetAmount)}</td>
+                <td style={{ color: '#10b981', fontWeight: 600 }}>{formatCurrency(saving.currentAmount)}</td>
+                <td>
+                  <span className={`${styles.statusBadge} ${saving.status === 'ACTIVE' ? styles.active : styles.inactive}`}>
+                    {saving.status || '-'}
+                  </span>
+                </td>
+                <td>{saving.username || '-'}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {savings.length === 0 && <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Không có khoản tiết kiệm</p>}
+
+        {filteredSavings.length === 0 && (
+          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co khoan tiet kiem</p>
+        )}
       </div>
     </div>
   );
@@ -468,42 +825,57 @@ const AdminDashboard = () => {
     <div className={styles.overviewContent}>
       <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>
         <Settings size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-        <h3>Cài đặt hệ thống</h3>
-        <p>Tính năng đang được phát triển</p>
+        <h3>Cai dat he thong</h3>
+        <p>Tinh nang nay dang duoc phat trien.</p>
       </div>
     </div>
   );
 
   const renderContent = () => {
-    if (loading) return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 60 }}>
-        <div className={styles.loading}>Đang tải dữ liệu...</div>
-      </div>
-    );
+    if (loading) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 60 }}>
+          <div className={styles.loading}>Dang tai du lieu...</div>
+        </div>
+      );
+    }
 
-    if (error) return (
-      <div style={{ padding: 30, textAlign: 'center' }}>
-        <AlertTriangle size={48} color="#ef4444" style={{ marginBottom: 16 }} />
-        <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>
-        <button onClick={loadData} className={styles.exportBtn}><RefreshCw size={16} /> Thử lại</button>
-      </div>
-    );
+    if (error) {
+      return (
+        <div style={{ padding: 30, textAlign: 'center' }}>
+          <AlertTriangle size={48} color="#ef4444" style={{ marginBottom: 16 }} />
+          <p style={{ color: '#ef4444', marginBottom: 16 }}>{error}</p>
+          <button onClick={loadData} className={styles.exportBtn}>
+            <RefreshCw size={16} /> Thu lai
+          </button>
+        </div>
+      );
+    }
 
     switch (activeTab) {
-      case 'overview': return renderOverview();
-      case 'users': return renderUsers();
-      case 'wallets': return renderWallets();
-      case 'transactions': return renderTransactions();
-      case 'debts': return renderDebts();
-      case 'savings': return renderSavings();
-      case 'settings': return renderSettings();
-      default: return renderOverview();
+      case 'overview':
+        return renderOverview();
+      case 'users':
+        return renderUsers();
+      case 'wallets':
+        return renderWallets();
+      case 'categories':
+        return renderCategories();
+      case 'transactions':
+        return renderTransactions();
+      case 'debts':
+        return renderDebts();
+      case 'savings':
+        return renderSavings();
+      case 'settings':
+        return renderSettings();
+      default:
+        return renderOverview();
     }
   };
 
   return (
     <div className={styles.adminDashboard}>
-      {/* Toast */}
       {toast && (
         <div className={`${styles.toast} ${toast.type === 'error' ? styles.toastError : styles.toastSuccess}`}>
           {toast.type === 'error' ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
@@ -511,7 +883,6 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Sidebar */}
       <aside className={`${styles.sidebar} ${!sidebarOpen ? styles.collapsed : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logo}>
@@ -524,7 +895,7 @@ const AdminDashboard = () => {
         </div>
 
         <nav className={styles.sidebarNav}>
-          {menuItems.map(item => (
+          {menuItems.map((item) => (
             <button
               key={item.id}
               className={`${styles.navItem} ${activeTab === item.id ? styles.active : ''}`}
@@ -544,27 +915,26 @@ const AdminDashboard = () => {
             {sidebarOpen && (
               <div className={styles.userDetails}>
                 <p className={styles.userName}>{user?.fullname || user?.username || 'Admin'}</p>
-                <p className={styles.userRole}>Quản trị viên</p>
+                <p className={styles.userRole}>Quan tri vien</p>
               </div>
             )}
           </div>
           <button onClick={handleLogout} className={styles.logoutBtn}>
             <LogOut size={18} />
-            {sidebarOpen && <span>Đăng xuất</span>}
+            {sidebarOpen && <span>Dang xuat</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className={styles.mainContent}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
             <h1 className={styles.pageTitle}>
-              {menuItems.find(m => m.id === activeTab)?.label || 'Dashboard'}
+              {menuItems.find((item) => item.id === activeTab)?.label || 'Dashboard'}
             </h1>
           </div>
           <div className={styles.headerRight}>
-            <button className={styles.notificationBtn} onClick={loadData} title="Làm mới">
+            <button className={styles.notificationBtn} onClick={loadData} title="Lam moi">
               <RefreshCw size={20} />
             </button>
             <div className={styles.adminInfo}>
@@ -584,7 +954,6 @@ const AdminDashboard = () => {
   );
 };
 
-// StatCard helper
 function StatCard({ icon, label, value, bg, color, trend }) {
   return (
     <div className={styles.statCard}>
@@ -594,7 +963,12 @@ function StatCard({ icon, label, value, bg, color, trend }) {
       <div className={styles.statInfo}>
         <span className={styles.statLabel}>{label}</span>
         <span className={styles.statValue}>{value}</span>
-        {trend && <span className={styles.statTrend}><TrendingUp size={14} />{trend}</span>}
+        {trend && (
+          <span className={styles.statTrend}>
+            <TrendingUp size={14} />
+            {trend}
+          </span>
+        )}
       </div>
     </div>
   );

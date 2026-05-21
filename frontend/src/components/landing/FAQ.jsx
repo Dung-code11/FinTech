@@ -7,12 +7,12 @@ const FAQ = () => {
 
   const faqs = [
     {
-      question: 'FinTech có miễn phí không?',
-      answer: 'Có, FinTech có gói miễn phí với đầy đủ tính năng cơ bản. Bạn có thể nâng cấp lên gói trả phí để sử dụng các tính năng nâng cao.',
+      question: 'FinTrack có miễn phí không?',
+      answer: 'Có, FinTrack có gói miễn phí với đầy đủ tính năng cơ bản. Bạn có thể nâng cấp lên gói trả phí để sử dụng các tính năng nâng cao.',
     },
     {
       question: 'Dữ liệu của tôi có được bảo mật không?',
-      answer: 'Tuyệt đối. FinTech sử dụng mã hóa SSL 256-bit và tuân thủ các tiêu chuẩn bảo mật ngân hàng. Dữ liệu của bạn được bảo vệ an toàn.',
+      answer: 'Tuyệt đối. FinTrack sử dụng mã hóa SSL 256-bit và tuân thủ các tiêu chuẩn bảo mật ngân hàng. Dữ liệu của bạn được bảo vệ an toàn.',
     },
     {
       question: 'Làm thế nào để kết nối với ngân hàng?',
@@ -23,12 +23,12 @@ const FAQ = () => {
       answer: 'Có, bạn có thể hủy gói trả phí bất cứ lúc nào. Dịch vụ sẽ tiếp tục đến hết chu kỳ thanh toán hiện tại.',
     },
     {
-      question: 'FinTech có hỗ trợ đầu tư không?',
+      question: 'FinTrack có hỗ trợ đầu tư không?',
       answer: 'Có, gói Cao cấp cung cấp tính năng gợi ý đầu tư thông minh dựa trên mục tiêu và khẩu vị rủi ro của bạn.',
     },
     {
       question: 'Tôi cần hỗ trợ thì làm thế nào?',
-      answer: 'Bạn có thể liên hệ qua email support@fintech.vn, hotline 1900 1234 hoặc chat trực tiếp trên ứng dụng. Chúng tôi hỗ trợ 24/7 cho gói Cao cấp.',
+      answer: 'Bạn có thể liên hệ qua email support@fintrack.vn, hotline 1900 1234 hoặc chat trực tiếp trên ứng dụng. Chúng tôi hỗ trợ 24/7 cho gói Cao cấp.',
     },
   ];
 
@@ -46,7 +46,7 @@ const FAQ = () => {
             <span className={styles.gradientText}>(FAQ)</span>
           </h2>
           <p className={styles.sectionDescription}>
-            Những câu hỏi phổ biến nhất về FinTech. Nếu bạn có thắc mắc khác, đừng ngần ngại liên hệ với chúng tôi.
+            Những câu hỏi phổ biến nhất về FinTrack. Nếu bạn có thắc mắc khác, đừng ngần ngại liên hệ với chúng tôi.
           </p>
         </div>
 

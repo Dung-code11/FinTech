@@ -4,6 +4,7 @@ import { useTransaction } from '../context/TransactionContext';
 import { useCategory } from '../context/CategoryContext';
 import AddTransactionModal from '../components/transactions/AddTransactionModal';
 import styles from '../css/TransactionsPage.module.css';
+import { getPeriodDateRange } from '../utils/date';
 import { 
   Plus,
   Search,
@@ -41,10 +42,7 @@ const TransactionsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: ''
-  });
+  const [dateRange, setDateRange] = useState(() => getPeriodDateRange('month'));
   const [amountRange, setAmountRange] = useState({
     min: '',
     max: ''
@@ -221,10 +219,18 @@ const TransactionsPage = () => {
 
   const selectedWalletData = walletOptions.find(w => w.id === selectedWallet) || walletOptions[0];
 
+  useEffect(() => {
+    if (selectedPeriod === 'custom') {
+      return;
+    }
+
+    setDateRange(getPeriodDateRange(selectedPeriod));
+  }, [selectedPeriod]);
+
   // Filter transactions - SỬA LẠI PHẦN LỌC THEO DANH MỤC
   const filters = {
     walletId: selectedWallet !== 'all' ? selectedWallet : null,
-    searchQuery,
+    searchQuery: searchQuery.trim(),
     category: selectedCategory !== 'all' ? selectedCategory : null, // Giờ là ID
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
@@ -234,6 +240,12 @@ const TransactionsPage = () => {
 
   const totals = getTotals(filters);
   const groupedTransactions = getGroupedTransactions(filters);
+  const hasAdvancedFilters = Boolean(
+    selectedCategory !== 'all' ||
+    amountRange.min ||
+    amountRange.max ||
+    (selectedPeriod === 'custom' && (dateRange.startDate || dateRange.endDate))
+  );
 
   // Xử lý chọn ví
   const handleWalletSelect = (walletId) => {
@@ -249,6 +261,11 @@ const TransactionsPage = () => {
   };
 
   // Xử lý xóa giao dịch
+  const handleDateRangeChange = (field, value) => {
+    setSelectedPeriod('custom');
+    setDateRange(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleDeleteTransaction = async (transaction) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa giao dịch này?')) {
       await deleteTransaction(transaction.id);
@@ -265,7 +282,7 @@ const TransactionsPage = () => {
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('all');
-    setDateRange({ startDate: '', endDate: '' });
+    setDateRange(getPeriodDateRange('month'));
     setAmountRange({ min: '', max: '' });
     setSelectedPeriod('month');
   };
@@ -407,7 +424,7 @@ const TransactionsPage = () => {
             >
               <Filter size={18} />
               <span>Lọc</span>
-              {(dateRange.startDate || dateRange.endDate || amountRange.min || amountRange.max || selectedCategory !== 'all') && (
+              {hasAdvancedFilters && (
                 <span className={styles.filterBadge} />
               )}
             </button>
@@ -458,14 +475,14 @@ const TransactionsPage = () => {
                     type="date" 
                     className={styles.dateInput} 
                     value={dateRange.startDate}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    onChange={(e) => handleDateRangeChange('startDate', e.target.value)}
                   />
                   <span>→</span>
                   <input 
                     type="date" 
                     className={styles.dateInput}
                     value={dateRange.endDate}
-                    onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    onChange={(e) => handleDateRangeChange('endDate', e.target.value)}
                   />
                 </div>
               </div>
