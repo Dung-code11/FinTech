@@ -17,7 +17,7 @@ pipeline {
     DOCKERHUB_CREDENTIALS = 'dockerhub-credentials'
     SSH_CREDENTIALS = 'deploy-vps-ssh'
 
-    DOCKERHUB_USER = 'kayndevops'
+    DOCKERHUB_USER = 'kayndev204'
 
     BACKEND_DIR = 'backend'
     FRONTEND_DIR = 'frontend'
