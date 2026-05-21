@@ -8,6 +8,9 @@ COPY .mvn .mvn
 COPY mvnw mvnw
 COPY mvnw.cmd mvnw.cmd
 
+# Fix permission for Maven wrapper
+RUN chmod +x mvnw
+
 # Warm Maven cache
 RUN ./mvnw -B -DskipTests dependency:go-offline
 
