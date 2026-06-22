@@ -79,7 +79,25 @@ public class TransactionAIService {
                     .build();
         }
 
-        Wallet wallet = resolveWallet(wallets, normalizedMessage);
+        WalletResolution walletResolution = resolveWallet(wallets, normalizedMessage, parsed.type());
+        if (walletResolution.requiresClarification()) {
+            return ChatResponse.builder()
+                    .reply(walletResolution.message())
+                    .action("NEEDS_CLARIFICATION")
+                    .refreshScopes(List.of())
+                    .build();
+        }
+
+        Wallet wallet = walletResolution.wallet();
+        String moneyValidationError = validateWalletImpact(wallet, parsed.type(), parsed.amount());
+        if (moneyValidationError != null) {
+            return ChatResponse.builder()
+                    .reply(moneyValidationError)
+                    .action("REJECTED")
+                    .refreshScopes(List.of())
+                    .build();
+        }
+
         Category category = categoryRepository
                 .findSmartCategoryByNameAndType(
                         parsed.categoryName(),
@@ -202,27 +220,43 @@ public class TransactionAIService {
         return categoryRepository.save(category);
     }
 
-    private Wallet resolveWallet(List<Wallet> wallets, String normalizedMessage) {
+    private WalletResolution resolveWallet(List<Wallet> wallets, String normalizedMessage, TransactionType type) {
         Optional<Wallet> walletByName = wallets.stream()
                 .filter(wallet -> normalizedMessage.contains(normalize(wallet.getName())))
                 .findFirst();
 
         if (walletByName.isPresent()) {
-            return walletByName.get();
+            return WalletResolution.selected(walletByName.get());
         }
 
         boolean preferCredit = containsAny(normalizedMessage, "the", "credit", "visa", "master");
-        if (preferCredit) {
-            return wallets.stream()
-                    .filter(wallet -> "CREDIT".equalsIgnoreCase(wallet.getType().name()))
-                    .findFirst()
-                    .orElse(wallets.get(0));
+
+        List<Wallet> matchedTypeWallets = wallets.stream()
+                .filter(wallet -> preferCredit
+                        ? "CREDIT".equalsIgnoreCase(wallet.getType().name())
+                        : "CASH".equalsIgnoreCase(wallet.getType().name()))
+                .toList();
+
+        if (matchedTypeWallets.size() == 1) {
+            return WalletResolution.selected(matchedTypeWallets.get(0));
         }
 
-        return wallets.stream()
-                .filter(wallet -> "CASH".equalsIgnoreCase(wallet.getType().name()))
-                .findFirst()
-                .orElse(wallets.get(0));
+        if (wallets.size() == 1) {
+            return WalletResolution.selected(wallets.get(0));
+        }
+
+        String walletTypeLabel = preferCredit ? "thẻ tín dụng" : type == TransactionType.INCOME ? "ví nhận tiền" : "ví chi tiền";
+        String walletNames = wallets.stream()
+                .map(Wallet::getName)
+                .limit(5)
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("");
+
+        return WalletResolution.clarification(
+                "Mình chưa chắc bạn muốn dùng " + walletTypeLabel + " nào để ghi giao dịch này. "
+                        + "Hãy nói rõ tên ví, ví dụ: \"ăn trưa 45k từ ví " + wallets.get(0).getName() + "\". "
+                        + (walletNames.isBlank() ? "" : "Các ví hiện có: " + walletNames + ".")
+        );
     }
 
     private String buildDescription(String originalMessage) {
@@ -331,18 +365,61 @@ public class TransactionAIService {
     private boolean looksLikeTransactionRequest(String normalizedMessage) {
         boolean hasAmount = MONEY_PATTERN.matcher(normalizedMessage).find();
         boolean explicitRecordCommand = containsAny(normalizedMessage, "ghi giao dich", "them giao dich", "luu giao dich", "ghi lai", "ghi");
+        boolean hasTransactionVerb = detectType(normalizedMessage) != null;
         boolean financeDomainQuestion = containsAny(normalizedMessage,
-                "ngan sach", "tiet kiem", "du doan", "phan tich", "tong quan", "so du", "lich su", "gan day", "bao nhieu", "xem");
+                "ngan sach", "tiet kiem", "du doan", "phan tich", "tong quan", "so du", "lich su", "gan day", "bao nhieu", "xem",
+                "con bao nhieu", "the nao", "sao", "tai sao");
+        boolean questionStyle = normalizedMessage.contains("?")
+                || containsAny(normalizedMessage, "co", "khong", "nao", "gi", "bao nhieu");
+        boolean hasWalletSignal = containsAny(normalizedMessage, "vi", "the", "credit", "visa", "master");
 
         if (!hasAmount && !explicitRecordCommand) {
             return false;
         }
 
-        if (financeDomainQuestion && !explicitRecordCommand && normalizedMessage.contains("?")) {
+        if (financeDomainQuestion && questionStyle && !explicitRecordCommand) {
             return false;
         }
 
-        return detectType(normalizedMessage) != null || explicitRecordCommand;
+        if (!explicitRecordCommand && !hasTransactionVerb) {
+            return false;
+        }
+
+        if (questionStyle && !explicitRecordCommand && !hasWalletSignal) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private String validateWalletImpact(Wallet wallet, TransactionType type, BigDecimal amount) {
+        if ("CREDIT".equalsIgnoreCase(wallet.getType().name())) {
+            BigDecimal unpaidBalance = safe(wallet.getUnpaidBalance());
+            BigDecimal creditLimit = safe(wallet.getCreditLimit());
+
+            if (type == TransactionType.EXPENSE) {
+                BigDecimal availableCredit = creditLimit.subtract(unpaidBalance);
+                if (amount.compareTo(availableCredit) > 0) {
+                    return "Khoản chi này vượt hạn mức còn lại của " + wallet.getName()
+                            + ". Hiện bạn chỉ còn " + formatCurrency(availableCredit) + " khả dụng.";
+                }
+                return null;
+            }
+
+            if (amount.compareTo(unpaidBalance) > 0) {
+                return "Khoản ghi giảm nợ này lớn hơn dư nợ hiện tại của " + wallet.getName()
+                        + " (" + formatCurrency(unpaidBalance) + "). Hãy kiểm tra lại số tiền hoặc chọn ví khác.";
+            }
+            return null;
+        }
+
+        BigDecimal balance = safe(wallet.getInitialBalance());
+        if (type == TransactionType.EXPENSE && amount.compareTo(balance) > 0) {
+            return "Khoản chi này vượt số dư hiện tại của " + wallet.getName()
+                    + ". Số dư còn lại là " + formatCurrency(balance) + ".";
+        }
+
+        return null;
     }
 
     private boolean containsAny(String normalizedMessage, String... keywords) {
@@ -390,6 +467,20 @@ public class TransactionAIService {
 
         private static ParsedTransaction missingAmount() {
             return new ParsedTransaction(true, true, null, null, null);
+        }
+    }
+
+    private record WalletResolution(
+            Wallet wallet,
+            boolean requiresClarification,
+            String message
+    ) {
+        private static WalletResolution selected(Wallet wallet) {
+            return new WalletResolution(wallet, false, null);
+        }
+
+        private static WalletResolution clarification(String message) {
+            return new WalletResolution(null, true, message);
         }
     }
 }

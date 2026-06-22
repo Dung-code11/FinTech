@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { categoryService } from '../services/categoryService';
 import { useAuth } from '../hooks/useAuth';
 
@@ -11,13 +11,7 @@ export const CategoryProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const { isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      loadAllCategories();
-    }
-  }, [isAuthenticated]);
-
-  const loadAllCategories = async () => {
+  const loadAllCategories = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -45,8 +39,7 @@ export const CategoryProvider = ({ children }) => {
         setIncomeCategories([]);
       }
 
-      const nextError = expenseResult.error || incomeResult.error || null;
-      setError(nextError);
+      setError(expenseResult.error || incomeResult.error || null);
     } catch (err) {
       console.error('Load categories error:', err);
       setExpenseCategories([]);
@@ -55,7 +48,18 @@ export const CategoryProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAllCategories();
+      return;
+    }
+
+    setExpenseCategories([]);
+    setIncomeCategories([]);
+    setError(null);
+  }, [isAuthenticated, loadAllCategories]);
 
   const value = {
     expenseCategories: Array.isArray(expenseCategories) ? expenseCategories : [],
@@ -63,7 +67,6 @@ export const CategoryProvider = ({ children }) => {
     loading,
     error,
     loadAllCategories,
-    // ... các functions khác giữ nguyên
   };
 
   return (

@@ -1,23 +1,38 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useCallback, useState } from 'react';
 import { authService } from '../services/authService';
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+const readStoredUser = () => {
+  try {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
 
-  const checkAuthStatus = async () => {
+    if (!token || !userStr) {
+      return null;
+    }
+
+    return JSON.parse(userStr);
+  } catch (error) {
+    console.error('Auth storage parse failed:', error);
+    return null;
+  }
+};
+
+export const AuthProvider = ({ children }) => {
+  const initialUser = readStoredUser();
+  const [user, setUser] = useState(initialUser);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(initialUser));
+
+  const checkAuthStatus = useCallback(async () => {
     try {
       setInitialLoading(true);
-      const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      
-      if (token && userStr) {
-        const userData = JSON.parse(userStr);
+      const userData = readStoredUser();
+
+      if (userData) {
         setUser(userData);
         setIsAuthenticated(true);
       } else {
@@ -29,29 +44,25 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setInitialLoading(false);
     }
-  };
-
-  useEffect(() => {
-    checkAuthStatus();
   }, []);
 
   const login = async (credentials) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await authService.login(credentials);
-      
+
       if (response.success) {
         setUser(response.data);
         setIsAuthenticated(true);
         return { success: true, data: response.data };
-      } else {
-        setError(response.error);
-        return { success: false, error: response.error };
       }
+
+      setError(response.error);
+      return { success: false, error: response.error };
     } catch (err) {
-      const errorMessage = err.message || 'Đăng nhập thất bại';
+      const errorMessage = err.message || 'Dang nhap that bai';
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -63,21 +74,21 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await authService.register(userData);
-      
+
       if (response.success) {
         return {
           success: true,
           data: response.data,
           message: response.message
         };
-      } else {
-        setError(response.error);
-        return { success: false, error: response.error };
       }
+
+      setError(response.error);
+      return { success: false, error: response.error };
     } catch (err) {
-      const errorMessage = err.message || 'Đăng ký thất bại';
+      const errorMessage = err.message || 'Dang ky that bai';
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {
@@ -115,7 +126,7 @@ export const AuthProvider = ({ children }) => {
       setError(response.error);
       return { success: false, error: response.error };
     } catch (error) {
-      const errorMessage = error.message || 'Không thể đồng bộ hồ sơ';
+      const errorMessage = error.message || 'Khong the dong bo ho so';
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

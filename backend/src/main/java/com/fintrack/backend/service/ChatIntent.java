@@ -3,6 +3,7 @@ package com.fintrack.backend.service;
 public enum ChatIntent {
     HELP,
     OVERVIEW,
+    SPENDING_PLAN,
     SPENDING_ANALYSIS,
     BUDGET_STATUS,
     SAVINGS_STATUS,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '../context/WalletContext';
 import { useTransaction } from '../context/TransactionContext';
 import { useCategory } from '../context/CategoryContext';
+import { transactionService } from '../services/transactionService';
 import AddTransactionModal from '../components/transactions/AddTransactionModal';
 import styles from '../css/TransactionsPage.module.css';
 import { getPeriodDateRange } from '../utils/date';
@@ -54,6 +55,7 @@ const TransactionsPage = () => {
     loading, 
     error,
     loadTransactions,
+    filterTransactions,
     getGroupedTransactions,
     getTotals,
     deleteTransaction 
@@ -239,13 +241,40 @@ const TransactionsPage = () => {
   };
 
   const totals = getTotals(filters);
-  const groupedTransactions = getGroupedTransactions(filters);
+  const filteredTransactions = filterTransactions(filters);
+  const ITEMS_PER_PAGE = 10;
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedTransactions = filteredTransactions.slice(
+    (safeCurrentPage - 1) * ITEMS_PER_PAGE,
+    safeCurrentPage * ITEMS_PER_PAGE
+  );
+  const groupedTransactions = transactionService.groupTransactionsByDate(paginatedTransactions);
   const hasAdvancedFilters = Boolean(
     selectedCategory !== 'all' ||
     amountRange.min ||
     amountRange.max ||
     (selectedPeriod === 'custom' && (dateRange.startDate || dateRange.endDate))
   );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedWallet,
+    selectedCategory,
+    searchQuery,
+    selectedPeriod,
+    dateRange.startDate,
+    dateRange.endDate,
+    amountRange.min,
+    amountRange.max
+  ]);
+
+  useEffect(() => {
+    if (currentPage !== safeCurrentPage) {
+      setCurrentPage(safeCurrentPage);
+    }
+  }, [currentPage, safeCurrentPage]);
 
   // Xử lý chọn ví
   const handleWalletSelect = (walletId) => {
@@ -306,6 +335,30 @@ const TransactionsPage = () => {
     loadAllCategories();
     loadTransactions();
   }, []);
+
+  const getVisiblePages = () => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    if (safeCurrentPage <= 3) {
+      return [1, 2, 3, 4, 5];
+    }
+
+    if (safeCurrentPage >= totalPages - 2) {
+      return Array.from({ length: 5 }, (_, index) => totalPages - 4 + index);
+    }
+
+    return [
+      safeCurrentPage - 2,
+      safeCurrentPage - 1,
+      safeCurrentPage,
+      safeCurrentPage + 1,
+      safeCurrentPage + 2
+    ];
+  };
+
+  const visiblePages = getVisiblePages();
 
   return (
     <div className={styles.transactionsPage}>
@@ -631,23 +684,56 @@ const TransactionsPage = () => {
           )}
 
           {/* Pagination */}
-          {!loading && !error && groupedTransactions.length > 0 && (
+          {!loading && !error && filteredTransactions.length > 0 && (
             <div className={styles.pagination}>
               <button 
                 className={styles.pageBtn} 
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => prev - 1)}
+                disabled={safeCurrentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               >
                 <ChevronLeft size={18} />
               </button>
-              <button className={`${styles.pageBtn} ${styles.active}`}>1</button>
-              <button className={styles.pageBtn}>2</button>
-              <button className={styles.pageBtn}>3</button>
-              <span className={styles.pageDots}>...</span>
-              <button className={styles.pageBtn}>10</button>
+
+              {visiblePages[0] > 1 && (
+                <>
+                  <button
+                    className={styles.pageBtn}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    1
+                  </button>
+                  {visiblePages[0] > 2 && <span className={styles.pageDots}>...</span>}
+                </>
+              )}
+
+              {visiblePages.map((page) => (
+                <button
+                  key={page}
+                  className={`${styles.pageBtn} ${page === safeCurrentPage ? styles.active : ''}`}
+                  onClick={() => setCurrentPage(page)}
+                >
+                  {page}
+                </button>
+              ))}
+
+              {visiblePages[visiblePages.length - 1] < totalPages && (
+                <>
+                  {visiblePages[visiblePages.length - 1] < totalPages - 1 && (
+                    <span className={styles.pageDots}>...</span>
+                  )}
+                  <button
+                    className={styles.pageBtn}
+                    onClick={() => setCurrentPage(totalPages)}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+
               <button 
                 className={styles.pageBtn}
-                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={safeCurrentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               >
                 <ChevronRight size={18} />
               </button>

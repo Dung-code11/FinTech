@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "../../css/DebtModal.module.css";
 import { X, Wallet, FileText, AlertCircle } from "lucide-react";
 import { debtService } from "../../services/debtService";
@@ -9,33 +9,27 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
     walletId: wallets[0]?.id || "",
     note: "",
   });
-
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [selectedWallet, setSelectedWallet] = useState(null);
 
+  const selectedWallet =
+    wallets.find((wallet) => wallet.id === formData.walletId) || null;
   const remainingAmount = (debt?.amount || 0) - (debt?.paidAmount || 0);
   const progress =
     debt?.amount > 0 ? ((debt?.paidAmount || 0) / debt?.amount) * 100 : 0;
 
-  // Reset form khi modal mở
   useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        amount: "",
-        walletId: wallets[0]?.id || "",
-        note: "",
-      });
-      setErrors({});
-      setSelectedWallet(wallets.find((w) => w.id === wallets[0]?.id));
+    if (!isOpen) {
+      return;
     }
-  }, [isOpen, wallets]);
 
-  // Cập nhật selectedWallet khi walletId thay đổi
-  useEffect(() => {
-    const wallet = wallets.find((w) => w.id === formData.walletId);
-    setSelectedWallet(wallet);
-  }, [formData.walletId, wallets]);
+    setFormData({
+      amount: "",
+      walletId: wallets[0]?.id || "",
+      note: "",
+    });
+    setErrors({});
+  }, [isOpen, wallets]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,31 +44,25 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
     const amountValue = parseFloat(formData.amount);
 
     if (!formData.amount) {
-      newErrors.amount = "Vui lòng nhập số tiền trả";
+      newErrors.amount = "Vui long nhap so tien tra";
     } else if (isNaN(amountValue) || amountValue <= 0) {
-      newErrors.amount = "Số tiền phải lớn hơn 0";
+      newErrors.amount = "So tien phai lon hon 0";
     } else if (amountValue > remainingAmount) {
-      newErrors.amount = `Số tiền không được vượt quá ${debtService.formatAmount(remainingAmount)}`;
+      newErrors.amount = `So tien khong duoc vuot qua ${debtService.formatAmount(remainingAmount)}`;
     }
 
     if (!formData.walletId) {
-      newErrors.walletId = "Vui lòng chọn ví thanh toán";
+      newErrors.walletId = "Vui long chon vi thanh toan";
     }
 
-    // Kiểm tra số dư ví
     if (selectedWallet && amountValue > 0 && !isNaN(amountValue)) {
-      let currentBalance = 0;
-      if (selectedWallet.type === "CASH") {
-        currentBalance = selectedWallet.balance || 0;
-      } else {
-        // Với thẻ tín dụng, số dư khả dụng = creditLimit - unpaidBalance
-        currentBalance =
-          (selectedWallet.creditLimit || 0) -
-          (selectedWallet.unpaidBalance || 0);
-      }
+      const currentBalance =
+        selectedWallet.type === "CASH"
+          ? selectedWallet.balance || 0
+          : (selectedWallet.creditLimit || 0) - (selectedWallet.unpaidBalance || 0);
 
       if (amountValue > currentBalance) {
-        newErrors.amount = `Số tiền vượt quá số dư ví (${debtService.formatAmount(currentBalance)})`;
+        newErrors.amount = `So tien vuot qua so du vi (${debtService.formatAmount(currentBalance)})`;
       }
     }
 
@@ -92,24 +80,20 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
       amount: parseFloat(formData.amount),
       walletId: formData.walletId,
       note: formData.note,
-      title: `Trả nợ ${debt?.name}`,
+      title: `Tra no ${debt?.name}`,
     };
-
-    console.log("Submitting payment:", submitData);
 
     try {
       const result = await onPay(debt.id, submitData);
-      console.log("Payment result from modal:", result);
 
       if (result && result.success) {
         onClose();
       } else {
-        const errorMsg = result?.error || "Không thể trả nợ, vui lòng thử lại";
-        alert(errorMsg);
+        alert(result?.error || "Khong the tra no, vui long thu lai");
       }
     } catch (error) {
       console.error("Payment error:", error);
-      alert("Có lỗi xảy ra, vui lòng thử lại");
+      alert("Co loi xay ra, vui long thu lai");
     } finally {
       setLoading(false);
     }
@@ -117,42 +101,40 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
 
   if (!isOpen) return null;
 
-  // Lấy số dư hiển thị của ví được chọn
   const getWalletBalanceDisplay = () => {
-    if (!selectedWallet) return "0₫";
+    if (!selectedWallet) return "0VND";
     if (selectedWallet.type === "CASH") {
       return debtService.formatAmount(selectedWallet.balance || 0);
-    } else {
-      const availableBalance =
-        (selectedWallet.creditLimit || 0) - (selectedWallet.unpaidBalance || 0);
-      return debtService.formatAmount(availableBalance);
     }
+
+    const availableBalance =
+      (selectedWallet.creditLimit || 0) - (selectedWallet.unpaidBalance || 0);
+    return debtService.formatAmount(availableBalance);
   };
 
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
-          <h2>Trả nợ - {debt?.name}</h2>
+          <h2>Tra no - {debt?.name}</h2>
           <button className={styles.closeBtn} onClick={onClose}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Thông tin khoản nợ */}
         <div className={styles.debtInfo}>
           <div className={styles.infoRow}>
-            <span>Tổng nợ:</span>
+            <span>Tong no:</span>
             <strong>{debtService.formatAmount(debt?.amount || 0)}</strong>
           </div>
           <div className={styles.infoRow}>
-            <span>Đã trả:</span>
+            <span>Da tra:</span>
             <strong className={styles.paidAmount}>
               {debtService.formatAmount(debt?.paidAmount || 0)}
             </strong>
           </div>
           <div className={styles.infoRow}>
-            <span>Còn lại:</span>
+            <span>Con lai:</span>
             <strong className={styles.remainingAmount}>
               {debtService.formatAmount(remainingAmount)}
             </strong>
@@ -169,10 +151,9 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form}>
-          {/* Ví thanh toán */}
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              Ví thanh toán <span className={styles.required}>*</span>
+              Vi thanh toan <span className={styles.required}>*</span>
             </label>
             <select
               name="walletId"
@@ -180,20 +161,18 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
               onChange={handleChange}
               className={`${styles.select} ${errors.walletId ? styles.error : ""}`}
             >
-              <option value="">-- Chọn ví --</option>
+              <option value="">-- Chon vi --</option>
               {wallets.map((wallet) => {
-                let balanceDisplay = "";
-                if (wallet.type === "CASH") {
-                  balanceDisplay = ` (Số dư: ${debtService.formatAmount(wallet.balance || 0)})`;
-                } else {
-                  const availableBalance =
-                    (wallet.creditLimit || 0) - (wallet.unpaidBalance || 0);
-                  balanceDisplay = ` (Hạn mức còn: ${debtService.formatAmount(availableBalance)})`;
-                }
+                const balanceDisplay =
+                  wallet.type === "CASH"
+                    ? ` (So du: ${debtService.formatAmount(wallet.balance || 0)})`
+                    : ` (Han muc con: ${debtService.formatAmount(
+                        (wallet.creditLimit || 0) - (wallet.unpaidBalance || 0)
+                      )})`;
+
                 return (
                   <option key={wallet.id} value={wallet.id}>
-                    {wallet.name} -{" "}
-                    {wallet.type === "CASH" ? "Tiền mặt" : "Thẻ tín dụng"}
+                    {wallet.name} - {wallet.type === "CASH" ? "Tien mat" : "The tin dung"}
                     {balanceDisplay}
                   </option>
                 );
@@ -202,7 +181,7 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
             {selectedWallet && (
               <div className={styles.walletBalanceInfo}>
                 <Wallet size={14} />
-                <span>Số dư khả dụng: {getWalletBalanceDisplay()}</span>
+                <span>So du kha dung: {getWalletBalanceDisplay()}</span>
               </div>
             )}
             {errors.walletId && (
@@ -213,13 +192,12 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
             )}
           </div>
 
-          {/* Số tiền trả */}
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              Số tiền trả <span className={styles.required}>*</span>
+              So tien tra <span className={styles.required}>*</span>
             </label>
             <div className={styles.amountInput}>
-              <span className={styles.currency}>₫</span>
+              <span className={styles.currency}>VND</span>
               <input
                 type="number"
                 name="amount"
@@ -246,37 +224,35 @@ const PayModal = ({ isOpen, onClose, debt, wallets, onPay }) => {
             )}
           </div>
 
-          {/* Ghi chú */}
           <div className={styles.formGroup}>
-            <label className={styles.label}>Ghi chú</label>
+            <label className={styles.label}>Ghi chu</label>
             <div className={styles.inputWithIcon}>
               <FileText size={18} className={styles.inputIcon} />
               <textarea
                 name="note"
                 value={formData.note}
                 onChange={handleChange}
-                placeholder="Ghi chú cho lần trả này (không bắt buộc)"
+                placeholder="Ghi chu cho lan tra nay (khong bat buoc)"
                 className={styles.textarea}
                 rows={2}
               />
             </div>
           </div>
 
-          {/* Footer */}
           <div className={styles.footer}>
             <button
               type="button"
               className={styles.cancelBtn}
               onClick={onClose}
             >
-              Hủy
+              Huy
             </button>
             <button
               type="submit"
               className={styles.submitBtn}
               disabled={loading}
             >
-              {loading ? "Đang xử lý..." : "Xác nhận trả nợ"}
+              {loading ? "Dang xu ly..." : "Xac nhan tra no"}
             </button>
           </div>
         </form>

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import Button from '../components/Button';
 import styles from '../css/VerifyOTPPage.module.css';
@@ -13,74 +13,66 @@ const VerifyOTPPage = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const [timer, setTimer] = useState(60); // 60 giây countdown
-  const [canResend, setCanResend] = useState(false);
-
+  const [timer, setTimer] = useState(60);
   const inputRefs = useRef([]);
+  const canResend = timer === 0;
 
-  // Redirect nếu không có email
   useEffect(() => {
     if (!email) {
       navigate('/forgot-password');
     }
   }, [email, navigate]);
 
-  // Countdown timer
   useEffect(() => {
-    let interval;
-    if (timer > 0 && !canResend) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    } else if (timer === 0) {
-      setCanResend(true);
+    if (timer === 0) {
+      return undefined;
     }
+
+    const interval = setInterval(() => {
+      setTimer((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+
     return () => clearInterval(interval);
-  }, [timer, canResend]);
+  }, [timer]);
 
-  // Xử lý nhập OTP
   const handleChange = (index, value) => {
-    if (value.length > 1) return; // Chỉ cho nhập 1 ký tự
+    const nextValue = value.replace(/\D/g, '');
+    if (nextValue.length > 1) return;
 
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
+    const nextOtp = [...otp];
+    nextOtp[index] = nextValue;
+    setOtp(nextOtp);
 
-    // Tự động focus ô tiếp theo
-    if (value && index < 5) {
-      inputRefs.current[index + 1].focus();
+    if (nextValue && index < 5) {
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleKeyDown = (index, e) => {
-    // Backspace: focus ô trước
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1].focus();
+  const handleKeyDown = (index, event) => {
+    if (event.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text/plain').slice(0, 6);
-    if (/^\d+$/.test(pastedData)) {
-      const digits = pastedData.split('');
-      const newOtp = [...otp];
-      digits.forEach((digit, index) => {
-        if (index < 6) newOtp[index] = digit;
-      });
-      setOtp(newOtp);
-      
-      // Focus ô cuối cùng
-      if (digits.length === 6) {
-        inputRefs.current[5].focus();
-      }
-    }
+  const handlePaste = (event) => {
+    event.preventDefault();
+    const pastedData = event.clipboardData.getData('text/plain').replace(/\D/g, '').slice(0, 6);
+    if (!pastedData) return;
+
+    const digits = pastedData.split('');
+    const nextOtp = [...otp];
+    digits.forEach((digit, index) => {
+      nextOtp[index] = digit;
+    });
+    setOtp(nextOtp);
+
+    inputRefs.current[Math.min(digits.length, 6) - 1]?.focus();
   };
 
   const validateOTP = () => {
     const otpString = otp.join('');
     if (otpString.length !== 6) {
-      setErrors({ submit: 'Vui lòng nhập đủ 6 số OTP' });
+      setErrors({ submit: 'Vui long nhap du 6 so OTP' });
       return false;
     }
     return true;
@@ -95,12 +87,12 @@ const VerifyOTPPage = () => {
     setLoading(false);
 
     if (result.success) {
-      navigate('/reset-password', { 
-        state: { 
-          email: email,
+      navigate('/reset-password', {
+        state: {
+          email,
           otp: otpString,
-          message: 'Xác thực OTP thành công! Vui lòng đặt mật khẩu mới.'
-        } 
+          message: 'Xac thuc OTP thanh cong. Vui long dat mat khau moi.'
+        }
       });
     } else {
       setErrors({ submit: result.error });
@@ -108,18 +100,18 @@ const VerifyOTPPage = () => {
   };
 
   const handleResendOTP = async () => {
-    setCanResend(false);
+    setErrors({});
     setTimer(60);
-    
+
     const result = await authService.forgotPassword(email);
     if (!result.success) {
       setErrors({ submit: result.error });
-      setCanResend(true);
-    } else {
-      // Reset OTP inputs
-      setOtp(['', '', '', '', '', '']);
-      inputRefs.current[0].focus();
+      setTimer(0);
+      return;
     }
+
+    setOtp(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
   };
 
   if (!email) return null;
@@ -127,35 +119,26 @@ const VerifyOTPPage = () => {
   return (
     <div className={styles.verifyPage}>
       <div className={styles.verifyCard}>
-        <button 
+        <button
           className={styles.backButton}
           onClick={() => navigate('/forgot-password')}
         >
           <ArrowLeft size={20} />
-          Quay lại
+          Quay lai
         </button>
 
         <div className={styles.header}>
           <div className={styles.iconWrapper}>
             <Key size={40} />
           </div>
-          <h1>Xác thực OTP</h1>
+          <h1>Xac thuc OTP</h1>
           <p className={styles.subtitle}>
-            Mã xác thực đã được gửi đến <strong>{email}</strong>
+            Ma xac thuc da duoc gui den <strong>{email}</strong>
           </p>
         </div>
 
-        {message && (
-          <div className={styles.infoMessage}>
-            {message}
-          </div>
-        )}
-
-        {errors.submit && (
-          <div className={styles.errorMessage}>
-            {errors.submit}
-          </div>
-        )}
+        {message && <div className={styles.infoMessage}>{message}</div>}
+        {errors.submit && <div className={styles.errorMessage}>{errors.submit}</div>}
 
         <div className={styles.otpContainer}>
           <div className={styles.otpInputs}>
@@ -163,12 +146,13 @@ const VerifyOTPPage = () => {
               <input
                 key={index}
                 type="text"
+                inputMode="numeric"
                 maxLength={1}
                 value={digit}
-                onChange={(e) => handleChange(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
+                onChange={(event) => handleChange(index, event.target.value)}
+                onKeyDown={(event) => handleKeyDown(index, event)}
                 onPaste={handlePaste}
-                ref={(el) => (inputRefs.current[index] = el)}
+                ref={(element) => (inputRefs.current[index] = element)}
                 className={styles.otpInput}
                 autoFocus={index === 0}
               />
@@ -178,36 +162,30 @@ const VerifyOTPPage = () => {
           <div className={styles.timer}>
             <Clock size={16} />
             <span>
-              {canResend ? (
-                'Bạn có thể gửi lại mã'
-              ) : (
-                `Gửi lại mã sau ${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}`
-              )}
+              {canResend
+                ? 'Ban co the gui lai ma'
+                : `Gui lai ma sau ${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}`}
             </span>
           </div>
 
           {canResend && (
-            <button 
+            <button
               className={styles.resendButton}
               onClick={handleResendOTP}
             >
               <RefreshCw size={16} />
-              Gửi lại mã OTP
+              Gui lai ma OTP
             </button>
           )}
         </div>
 
-        <Button 
-          onClick={handleVerify} 
-          fullWidth 
-          loading={loading}
-        >
-          Xác thực OTP
+        <Button onClick={handleVerify} fullWidth loading={loading}>
+          Xac thuc OTP
         </Button>
 
         <div className={styles.footer}>
           <p>
-            <Link to="/login">Quay lại đăng nhập</Link>
+            <Link to="/login">Quay lai dang nhap</Link>
           </p>
         </div>
       </div>

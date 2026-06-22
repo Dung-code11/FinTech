@@ -9,17 +9,13 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CheckCircle,
-  ChevronRight,
-  CreditCard,
   DollarSign,
   Edit2,
   Home,
   LogOut,
   Menu,
-  PiggyBank,
   RefreshCw,
   Search,
-  Settings,
   Shield,
   Tags,
   Trash2,
@@ -47,11 +43,8 @@ const AdminDashboard = () => {
 
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
-  const [wallets, setWallets] = useState([]);
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [debts, setDebts] = useState([]);
-  const [savings, setSavings] = useState([]);
 
   const [categoryTypeFilter, setCategoryTypeFilter] = useState('all');
   const [categoryScopeFilter, setCategoryScopeFilter] = useState('all');
@@ -96,20 +89,8 @@ const AdminDashboard = () => {
         case 'users':
           setUsers(requireSuccess(await adminService.getUsers()));
           break;
-        case 'wallets':
-          setWallets(requireSuccess(await adminService.getWallets()));
-          break;
         case 'categories':
           setCategories(requireSuccess(await adminService.getCategories()));
-          break;
-        case 'transactions':
-          setTransactions(requireSuccess(await adminService.getTransactions()));
-          break;
-        case 'debts':
-          setDebts(requireSuccess(await adminService.getDebts()));
-          break;
-        case 'savings':
-          setSavings(requireSuccess(await adminService.getSavings()));
           break;
         default:
           break;
@@ -237,27 +218,6 @@ const AdminDashboard = () => {
     normalize(userItem.email).includes(normalize(searchQuery))
   );
 
-  const filteredWallets = wallets.filter((walletItem) =>
-    normalize(walletItem.name).includes(normalize(searchQuery)) ||
-    normalize(walletItem.username).includes(normalize(searchQuery))
-  );
-
-  const filteredTransactions = transactions.filter((transaction) =>
-    normalize(transaction.description).includes(normalize(searchQuery)) ||
-    normalize(transaction.username).includes(normalize(searchQuery)) ||
-    normalize(transaction.categoryName).includes(normalize(searchQuery))
-  );
-
-  const filteredDebts = debts.filter((debt) =>
-    normalize(debt.name).includes(normalize(searchQuery)) ||
-    normalize(debt.username).includes(normalize(searchQuery))
-  );
-
-  const filteredSavings = savings.filter((saving) =>
-    normalize(saving.title).includes(normalize(searchQuery)) ||
-    normalize(saving.username).includes(normalize(searchQuery))
-  );
-
   const filteredCategories = categories.filter((category) => {
     const matchesSearch =
       normalize(category.name).includes(normalize(searchQuery)) ||
@@ -275,12 +235,7 @@ const AdminDashboard = () => {
   const menuItems = [
     { id: 'overview', label: 'Tong quan', icon: <Home size={20} /> },
     { id: 'users', label: 'Nguoi dung', icon: <Users size={20} /> },
-    { id: 'wallets', label: 'Vi', icon: <Wallet size={20} /> },
-    { id: 'categories', label: 'Danh muc', icon: <Tags size={20} /> },
-    { id: 'transactions', label: 'Giao dich', icon: <Activity size={20} /> },
-    { id: 'debts', label: 'Cong no', icon: <CreditCard size={20} /> },
-    { id: 'savings', label: 'Tiet kiem', icon: <PiggyBank size={20} /> },
-    { id: 'settings', label: 'Cai dat', icon: <Settings size={20} /> }
+    { id: 'categories', label: 'Danh muc', icon: <Tags size={20} /> }
   ];
 
   const renderToolbar = (children) => (
@@ -387,9 +342,6 @@ const AdminDashboard = () => {
       <div className={styles.recentSection}>
         <div className={styles.sectionHeader}>
           <h3>Giao dich gan day</h3>
-          <button className={styles.viewAllBtn} onClick={() => setActiveTab('transactions')}>
-            Xem tat ca <ChevronRight size={16} />
-          </button>
         </div>
 
         <div className={styles.activityList}>
@@ -492,50 +444,6 @@ const AdminDashboard = () => {
 
         {filteredUsers.length === 0 && (
           <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong tim thay nguoi dung</p>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderWallets = () => (
-    <div className={styles.usersContent}>
-      <div className={styles.contentHeader}>
-        <h2>Quan ly vi</h2>
-        {renderToolbar()}
-      </div>
-
-      <div className={styles.usersTable}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Ten vi</th>
-              <th>Loai</th>
-              <th>So du</th>
-              <th>Chu vi</th>
-              <th>Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredWallets.map((walletItem) => (
-              <tr key={walletItem.id}>
-                <td>#{walletItem.id?.slice(0, 6)}</td>
-                <td>{walletItem.name || '-'}</td>
-                <td><span className={styles.roleBadge}>{walletItem.type || '-'}</span></td>
-                <td style={{ fontWeight: 600 }}>{formatCurrency(walletItem.initialBalance)}</td>
-                <td>{walletItem.username || '-'}</td>
-                <td>
-                  <span className={`${styles.roleBadge} ${walletItem.userRole === 'ADMIN' ? styles.admin : styles.user}`}>
-                    {walletItem.userRole || '-'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredWallets.length === 0 && (
-          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co vi nao</p>
         )}
       </div>
     </div>
@@ -673,164 +581,6 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderTransactions = () => (
-    <div className={styles.usersContent}>
-      <div className={styles.contentHeader}>
-        <h2>Quan ly giao dich</h2>
-        {renderToolbar()}
-      </div>
-
-      <div className={styles.usersTable}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Loai</th>
-              <th>So tien</th>
-              <th>Mo ta</th>
-              <th>Danh muc</th>
-              <th>Vi</th>
-              <th>User</th>
-              <th>Ngay</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTransactions.map((transaction) => (
-              <tr key={transaction.id}>
-                <td>#{transaction.id?.slice(0, 6)}</td>
-                <td>
-                  <span
-                    style={{
-                      color: transaction.type === 'EXPENSE' ? '#ef4444' : '#10b981',
-                      fontWeight: 600
-                    }}
-                  >
-                    {transaction.type}
-                  </span>
-                </td>
-                <td
-                  style={{
-                    fontWeight: 600,
-                    color: transaction.type === 'EXPENSE' ? '#ef4444' : '#10b981'
-                  }}
-                >
-                  {formatCurrency(transaction.amount)}
-                </td>
-                <td>{transaction.description || '-'}</td>
-                <td>{transaction.categoryName || '-'}</td>
-                <td>{transaction.walletName || '-'}</td>
-                <td>{transaction.username || '-'}</td>
-                <td>{formatDate(transaction.createdAt)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredTransactions.length === 0 && (
-          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co giao dich</p>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderDebts = () => (
-    <div className={styles.usersContent}>
-      <div className={styles.contentHeader}>
-        <h2>Quan ly no</h2>
-        {renderToolbar()}
-      </div>
-
-      <div className={styles.usersTable}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Ten</th>
-              <th>Tong</th>
-              <th>Con lai</th>
-              <th>Ngay tao</th>
-              <th>Ngay den han</th>
-              <th>Chu no</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredDebts.map((debt) => (
-              <tr key={debt.id}>
-                <td>#{debt.id}</td>
-                <td>{debt.name || '-'}</td>
-                <td style={{ fontWeight: 600 }}>{formatCurrency(debt.totalAmount)}</td>
-                <td style={{ color: '#ef4444', fontWeight: 600 }}>{formatCurrency(debt.remainingAmount)}</td>
-                <td>{formatDate(debt.createdDate)}</td>
-                <td>{formatDate(debt.targetDate)}</td>
-                <td>{debt.username || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredDebts.length === 0 && (
-          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co khoan no</p>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderSavings = () => (
-    <div className={styles.usersContent}>
-      <div className={styles.contentHeader}>
-        <h2>Quan ly tiet kiem</h2>
-        {renderToolbar()}
-      </div>
-
-      <div className={styles.usersTable}>
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tieu de</th>
-              <th>Loai</th>
-              <th>Muc tieu</th>
-              <th>Hien tai</th>
-              <th>Trang thai</th>
-              <th>Chu TK</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredSavings.map((saving) => (
-              <tr key={saving.id}>
-                <td>#{saving.id?.slice(0, 6)}</td>
-                <td>{saving.title || '-'}</td>
-                <td><span className={styles.roleBadge}>{saving.type || '-'}</span></td>
-                <td style={{ fontWeight: 600 }}>{formatCurrency(saving.targetAmount)}</td>
-                <td style={{ color: '#10b981', fontWeight: 600 }}>{formatCurrency(saving.currentAmount)}</td>
-                <td>
-                  <span className={`${styles.statusBadge} ${saving.status === 'ACTIVE' ? styles.active : styles.inactive}`}>
-                    {saving.status || '-'}
-                  </span>
-                </td>
-                <td>{saving.username || '-'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredSavings.length === 0 && (
-          <p style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>Khong co khoan tiet kiem</p>
-        )}
-      </div>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className={styles.overviewContent}>
-      <div style={{ padding: 30, textAlign: 'center', color: '#64748b' }}>
-        <Settings size={48} style={{ marginBottom: 16, opacity: 0.5 }} />
-        <h3>Cai dat he thong</h3>
-        <p>Tinh nang nay dang duoc phat trien.</p>
-      </div>
-    </div>
-  );
-
   const renderContent = () => {
     if (loading) {
       return (
@@ -857,18 +607,8 @@ const AdminDashboard = () => {
         return renderOverview();
       case 'users':
         return renderUsers();
-      case 'wallets':
-        return renderWallets();
       case 'categories':
         return renderCategories();
-      case 'transactions':
-        return renderTransactions();
-      case 'debts':
-        return renderDebts();
-      case 'savings':
-        return renderSavings();
-      case 'settings':
-        return renderSettings();
       default:
         return renderOverview();
     }
